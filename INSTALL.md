@@ -35,19 +35,67 @@ and add usage instructions to your instruction file.
 5. **Back up every configuration file before editing it**: copy it next to itself with the suffix
    `.bak-ihmt`.
 6. **Idempotent:** if something is already done correctly, leave it as it is and say so.
-7. If a required step fails and the fix is not obvious, **stop and explain** what failed, with the
+7. **Install nothing on the system without the user's OK.** If Python or git is missing (step 1),
+   propose installing it and wait for a yes. Never run `sudo` for the user: if a command needs a
+   password, give it to them to run.
+8. If a required step fails and the fix is not obvious, **stop and explain** what failed, with the
    exact error. Do not improvise workarounds, and do not write your own test scripts against
    `mcp_server.py` — step 7 covers testing.
 
-## 1. Requirements
+## 1. Requirements: Python 3.10+ and git
+
+### Check
 
 ```bash
-python3 --version   # must be 3.10 or newer
+for py in python3 python3.13 python3.12 python3.11 python3.10; do
+  command -v "$py" >/dev/null && "$py" -c 'import sys; print(sys.version_info >= (3, 10), sys.executable)'
+done
+~/.local/bin/uv python find '>=3.10' 2>/dev/null
 git --version
+curl --version | head -1
 ```
 
-If Python is older than 3.10 or missing, stop and tell the user to install Python 3.10+ (on macOS:
-`brew install python`). If `git` is missing, stop and tell them to install it.
+- **Python:** use the first interpreter that printed `True`, or the path printed by `uv python find`.
+  Call it `<PY>`. Note that `python3` alone is not enough on a Mac: the one that ships with macOS is
+  3.9, so check the others too before concluding Python is missing.
+- **git** and **curl:** a version line means they are there.
+
+If everything is there, go to step 2.
+
+### If something is missing: propose, then install
+
+Tell the user, in one short message, **what is missing, why IHMT needs it, and what you propose to
+install**, and ask for their OK. For example: *"IHMT needs Python 3.10 or newer, and this Mac only
+has 3.9. Can I install Python 3.12 with uv? It goes in your user folder and needs no administrator
+password."*
+
+Only if they agree, install it as below. If they say no, stop and give them these commands so they
+can do it themselves later.
+
+**Python — with [uv](https://docs.astral.sh/uv/), no administrator rights needed:**
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh        # installs uv in ~/.local/bin
+~/.local/bin/uv python install 3.12
+~/.local/bin/uv python find 3.12                        # prints the new interpreter: that is <PY>
+```
+
+*Windows (untested):* `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`,
+then `uv python install 3.12` and `uv python find 3.12`.
+
+**git:**
+
+- *macOS with Homebrew* (`command -v brew` finds it): `brew install git`.
+- *macOS without Homebrew:* run `xcode-select --install`, then tell the user: **"A window from Apple
+  has opened: click Install, wait until it finishes (a few minutes) and tell me."** When they
+  confirm, check `git --version` again.
+- *Linux:* it needs the administrator password, so give the user the command for their system to
+  run themselves — `sudo apt install git` (Debian/Ubuntu) or `sudo dnf install git` (Fedora) — and
+  wait for them.
+- *Windows (untested):* `winget install --id Git.Git -e`, then open a new terminal.
+
+**curl** is present on macOS, Windows 10+ and nearly every Linux; if it is missing, ask the user to
+install it with their system's package manager.
 
 ## 2. Look for an existing installation
 
@@ -141,10 +189,12 @@ git clone https://github.com/gonzaroman/IHMT-MEMORY.git ~/IHMT-MEMORY
 
 ```bash
 cd <REPO>
-python3 -m venv .venv
+<PY> -m venv .venv
 .venv/bin/pip install -r requirements-mcp.txt
 .venv/bin/python -c "import mcp; print('mcp SDK OK')"
 ```
+
+`<PY>` is the Python 3.10+ from step 1 — not necessarily `python3`.
 
 *Windows (untested):* `py -m venv .venv`, `.venv\Scripts\pip install -r requirements-mcp.txt`, and
 the interpreter is `<REPO>\.venv\Scripts\python.exe`.

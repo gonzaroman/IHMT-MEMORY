@@ -34,6 +34,25 @@ any of your agents.
 
 ## Install
 
+### Before you start
+
+| You need | Why |
+|---|---|
+| **Python 3.10 or newer** | IHMT is written in Python |
+| **git** | to download IHMT and keep it updated |
+| **An AI agent that can run commands** (Claude Code, Codex, opencode, Copilot in agent mode…) | it installs IHMT and then uses the memory |
+| **Internet, during the installation** | to download the code and the MCP package; not needed afterwards |
+
+**Missing Python or git? Your AI agent will offer to install them for you** — it asks first. Python
+goes in your user folder, with no administrator password. On a brand-new Mac, git may need one click:
+Apple shows a window asking to install its command-line tools.
+
+On a Mac, note that the `python3` that comes with macOS is version 3.9, which is too old — that is why
+your agent may say Python is missing even though `python3` exists.
+
+You do **not** need administrator rights, a database, an account, or any paid service beyond your
+agent. Details: [GUIDE.md §3](GUIDE.md#3-requirements).
+
 ### Let your AI agent install it
 
 Paste this into the AI agent you want to give a memory to — **Claude Code**, **Codex** and

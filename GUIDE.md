@@ -159,17 +159,39 @@ Typical uses:
 
 | What | Needed for | Check it with |
 |---|---|---|
-| **Python 3.10 or newer** | everything | `python3 --version` |
-| **git** | cloning the repository | `git --version` |
-| **Claude Code CLI** | using the memory from Claude Code (section 5) | `claude --version` |
-| *or* **Codex** | using the memory from Codex instead ([5.6](#56-using-it-with-codex-tested)) | `codex --version` |
-| *or* **opencode** | using the memory from opencode instead ([5.7](#57-using-it-with-opencode-tested)) | `opencode --version` |
+| **Python 3.10 or newer** | everything | `python3 --version` (and `python3.12 --version`, etc.) |
+| **git** | downloading IHMT and updating it | `git --version` |
+| **An AI agent that can run commands**: Claude Code, Codex, opencode, Copilot in agent mode… | installing IHMT and using the memory | e.g. `claude --version`, `codex --version`, `opencode --version` |
+| **Internet, during the installation** | downloading the code and the MCP package | — |
 | The `mcp` Python package | only the MCP server; installed in step 5.1 | — |
 
-Operating systems: **tested on macOS and Linux.** Windows should work, but it is **not tested**; where
-commands differ, this guide gives the Windows version marked *(Windows, untested)*.
+You do **not** need administrator rights, a database, an account or any paid service beyond your
+agent. The core (`ihmt/`, `main.py`, `init_ihmt.py`, `gui.py`) needs nothing beyond the standard
+library.
 
-The core (`ihmt/`, `main.py`, `init_ihmt.py`, `gui.py`) needs nothing beyond the standard library.
+**Missing Python or git?** If you install with your AI agent ([section 4](#4-installation-step-by-step)),
+it checks for them and **offers to install what is missing**, asking you first:
+
+- **Python** with [uv](https://docs.astral.sh/uv/): it goes into your user folder, with no
+  administrator password.
+- **git** with Homebrew if you have it. On a Mac without Homebrew, the agent opens Apple's installer
+  for its command-line tools, and you click *Install* in the window that appears. On Linux it gives you
+  the command to run, because it needs your password.
+
+To install them yourself instead:
+
+| | Python 3.10+ | git |
+|---|---|---|
+| **macOS** | `brew install python`, the installer from [python.org](https://www.python.org/downloads/), or `uv python install 3.12` | `xcode-select --install` (Apple's window), or `brew install git` |
+| **Linux** | your package manager (`sudo apt install python3`, check it is 3.10+), or uv | `sudo apt install git` / `sudo dnf install git` |
+| **Windows** *(untested)* | [python.org](https://www.python.org/downloads/), or uv | `winget install --id Git.Git -e` |
+
+> **Mac users:** the `python3` that ships with macOS is **3.9**, too old for IHMT, even on recent
+> macOS versions. If `python3 --version` says 3.9, install a newer one as above; it does not replace
+> or break the system one.
+
+Operating systems: **tested on macOS.** Linux and Windows should work, but they are **not tested**;
+where commands differ, this guide gives the Windows version marked *(Windows, untested)*.
 
 ---
 
