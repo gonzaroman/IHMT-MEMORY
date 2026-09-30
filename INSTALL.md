@@ -69,14 +69,16 @@ install**, and ask for their OK. For example: *"IHMT needs Python 3.10 or newer,
 has 3.9. Can I install Python 3.12 with uv? It goes in your user folder and needs no administrator
 password."*
 
-Only if they agree, install it as below. If they say no, stop and give them these commands so they
-can do it themselves later.
+**Then stop and end your turn — do not install anything in the same turn you ask.** Wait for the
+user's reply, even if you are running non-interactively or with every tool pre-approved: installing
+software on their computer is their decision, not a tool permission. Only if they agree, install it
+as below. If they say no, stop and give them these commands so they can do it themselves later.
 
 **Python — with [uv](https://docs.astral.sh/uv/), no administrator rights needed:**
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh        # installs uv in ~/.local/bin
-~/.local/bin/uv python install 3.12
+curl -LsSf https://astral.sh/uv/install.sh | sh        # prints where it installed uv, usually ~/.local/bin
+~/.local/bin/uv python install 3.12                     # use the uv path the installer printed
 ~/.local/bin/uv python find 3.12                        # prints the new interpreter: that is <PY>
 ```
 
