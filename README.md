@@ -19,8 +19,9 @@ opened grows with the *depth* of the tree (`≈ beam × log_B(n)`), not with the
 | Storage | binary index | UTF-8 `.txt` + JSON you can read |
 
 > **Compatibility.** Officially supported: **Claude Code**. Also tested: **Codex** (CLI and the
-> ChatGPT desktop app) — [setup](GUIDE.md#56-using-it-with-codex-tested). IHMT is a standard stdio MCP
-> server, so other MCP clients may work, but they are not tested or documented yet.
+> ChatGPT desktop app — [setup](GUIDE.md#56-using-it-with-codex-tested)) and **opencode**
+> ([setup](GUIDE.md#57-using-it-with-opencode-tested)). IHMT is a standard stdio MCP server, so other
+> MCP clients may work, but they are not tested or documented yet. All of them can share one memory.
 
 Your memory is **local and private**: a folder on your disk that IHMT never uploads or shares. Every
 person who installs IHMT starts with their own, empty memory.
@@ -55,6 +56,11 @@ Windows, the project scope, the graphical setup and troubleshooting are all cove
 then add `default_tools_approval_mode = "approve"` to the `[mcp_servers.ihmt-memory]` table in
 `~/.codex/config.toml` and put the instructions in `AGENTS.md` — details in
 [GUIDE.md §5.6](GUIDE.md#56-using-it-with-codex-tested).
+
+**Using opencode?** Add an `"mcp"` entry to `~/.config/opencode/opencode.json` —
+`"ihmt-memory": {"type": "local", "command": ["<abs>/.venv/bin/python", "<abs>/mcp_server.py"],
+"environment": {"IHMT_HOME": "<abs>"}}` — and put the instructions in `~/.config/opencode/AGENTS.md`;
+details in [GUIDE.md §5.7](GUIDE.md#57-using-it-with-opencode-tested).
 
 ## Quick start
 

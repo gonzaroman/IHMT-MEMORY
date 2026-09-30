@@ -5,9 +5,10 @@
 > itself with Claude Code are in [`CLAUDE.md`](CLAUDE.md).
 
 > **Compatibility.** Officially supported: **Claude Code**. Also tested: **Codex** (CLI and the
-> ChatGPT desktop app) — see [section 5.6](#56-using-it-with-codex-tested). IHMT is a standard stdio
-> MCP server, so other MCP clients may work, but they are not tested or documented yet (see
-> [Roadmap](#13-roadmap)).
+> ChatGPT desktop app, [section 5.6](#56-using-it-with-codex-tested)) and **opencode**
+> ([section 5.7](#57-using-it-with-opencode-tested)). IHMT is a standard stdio MCP server, so other
+> MCP clients may work, but they are not tested or documented yet (see [Roadmap](#13-roadmap)).
+> All of them can share one memory.
 
 ## Contents
 
@@ -15,7 +16,7 @@
 2. [What it is for — and what it is not for](#2-what-it-is-for--and-what-it-is-not-for)
 3. [Requirements](#3-requirements)
 4. [Installation, step by step](#4-installation-step-by-step)
-5. [Connect it to Claude Code](#5-connect-it-to-claude-code) — and [to Codex](#56-using-it-with-codex-tested)
+5. [Connect it to Claude Code](#5-connect-it-to-claude-code) — and [to Codex](#56-using-it-with-codex-tested) or [opencode](#57-using-it-with-opencode-tested)
 6. [Using it day to day with Claude Code](#6-using-it-day-to-day-with-claude-code)
 7. [The graphical interface](#7-the-graphical-interface)
 8. [The command line (CLI)](#8-the-command-line-cli)
@@ -160,6 +161,7 @@ Typical uses:
 | **git** | cloning the repository | `git --version` |
 | **Claude Code CLI** | using the memory from Claude Code (section 5) | `claude --version` |
 | *or* **Codex** | using the memory from Codex instead ([5.6](#56-using-it-with-codex-tested)) | `codex --version` |
+| *or* **opencode** | using the memory from opencode instead ([5.7](#57-using-it-with-opencode-tested)) | `opencode --version` |
 | The `mcp` Python package | only the MCP server; installed in step 5.1 | — |
 
 Operating systems: **tested on macOS and Linux.** Windows should work, but it is **not tested**; where
@@ -499,12 +501,87 @@ answering and saves durable facts on its own:
 
 **Remove it:** `codex mcp remove ihmt-memory`.
 
+### 5.7 Using it with opencode (tested)
+
+IHMT also works with **[opencode](https://opencode.ai)**, the open-source terminal coding agent.
+Tested with opencode 1.18 and two different models (Meta's Muse Spark and Google's Gemini Flash):
+saving and recalling across sessions, `OUTDATED` and `AMBIGUOUS` handling, searching/saving on its own
+when `AGENTS.md` tells it to, and sharing one memory with Claude Code.
+
+**1. Install IHMT's MCP package** — [step 5.1](#51-install-the-mcp-package-in-a-virtual-environment),
+if you have not already.
+
+**2. Register the server.** Open opencode's global config, `~/.config/opencode/opencode.json` (or
+`opencode.jsonc`; create it if it does not exist), and add an `mcp` entry:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "ihmt-memory": {
+      "type": "local",
+      "command": [
+        "/absolute/path/to/IHMT-MEMORY/.venv/bin/python",
+        "/absolute/path/to/IHMT-MEMORY/mcp_server.py"
+      ],
+      "environment": {
+        "IHMT_HOME": "/absolute/path/to/where/the/memory/lives"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+- If the file already has content, add only the `"mcp"` block (or just the `"ihmt-memory"` entry
+  inside an existing `"mcp"`), keeping the rest.
+- `command` is a **list**: the venv's Python first, then `mcp_server.py`, both absolute.
+- `environment` (not `env`) holds `IHMT_HOME`. Point it at the **same folder Claude Code (or Codex)
+  uses** and they all share one memory.
+- For a single project instead of all of them, put the same block in an `opencode.json` at that
+  project's root.
+
+No approval setting is needed: opencode lets MCP tools run by default. (If you have restricted tools
+through opencode's `permission` settings, allow `ihmt-memory_*`.)
+
+**3. Check it.**
+
+```bash
+opencode mcp list
+```
+
+```
+┌  MCP Servers
+│
+●  ✓ ihmt-memory connected
+│      /…/IHMT-MEMORY/.venv/bin/python /…/IHMT-MEMORY/mcp_server.py
+│
+└  1 server(s)
+```
+
+**4. Tell opencode when to use it.** opencode reads `AGENTS.md`: paste the template from
+[section 5.4](#54-tell-claude-when-to-use-it-recommended) into `~/.config/opencode/AGENTS.md` (all
+projects) or into a project's `AGENTS.md`. It works unchanged. With it, opencode searches and saves
+on its own:
+
+> **You:** Heads up: I've switched my default shell from zsh to fish this week.
+> → opencode calls `ihmt-memory_search_memory`, then `ihmt-memory_save_memory`: *"Noted — I've saved
+> fish as your default shell going forward."*
+>
+> **You, in a new session:** Which shell do I use now?
+> → *"Per memory from 2026-09-30: switched default shell from zsh to fish. So you use fish now."*
+
+In opencode the tools appear with the server name as a prefix: `ihmt-memory_search_memory`,
+`ihmt-memory_save_memory`, and so on.
+
+**Remove it:** delete the `"ihmt-memory"` entry from the config file.
+
 ---
 
 ## 6. Using it day to day with Claude Code
 
-Once connected, you just talk. Claude decides when to search and when to save (Codex behaves the
-same way, with the same tools and outputs); you can also ask
+Once connected, you just talk. Claude decides when to search and when to save (Codex and opencode
+behave the same way, with the same tools and outputs); you can also ask
 explicitly ("remember that…", "what did we decide about…").
 
 The server exposes **eight tools** in three families. Below, each one with a **real** output.
@@ -1207,8 +1284,9 @@ Small: it is text. 1,000 notes are about 1,145 small files.
 
 ## 13. Roadmap
 
-- **Other agents.** ~~Codex~~ (done, [section 5.6](#56-using-it-with-codex-tested)). Next: tested
-  setups for Gemini CLI, Cursor, VS Code…, Codex support in the graphical interface, and possibly an
+- **Other agents.** ~~Codex~~ and ~~opencode~~ (done, sections [5.6](#56-using-it-with-codex-tested)
+  and [5.7](#57-using-it-with-opencode-tested)). Next: tested setups for Gemini CLI, Cursor, VS Code…,
+  Codex and opencode support in the graphical interface, and possibly an
   HTTP transport for clients that only talk to remote servers (such as ChatGPT's web connectors).
 - **Batched project tools**: several ranges or queries per `read_file` / `find_code` call, full
   relative paths in headers, shorter default answers.
@@ -1228,6 +1306,8 @@ claude mcp add ihmt-memory -s user -e IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python
 claude mcp list                              # → ✔ Connected
 # …or with Codex (then add default_tools_approval_mode = "approve", see §5.6)
 codex mcp add ihmt-memory --env IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
+# …or with opencode: add the "mcp" block to ~/.config/opencode/opencode.json (see §5.7)
+opencode mcp list                            # → ✓ ihmt-memory connected
 
 # start
 python3 gui.py                               # graphical interface (set up and explore)
