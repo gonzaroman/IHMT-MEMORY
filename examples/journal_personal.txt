@@ -1,0 +1,50 @@
+2024-03-11
+Hoy he firmado el contrato del piso. Vivo en Madrid, en el barrio de Lavapiés, un tercero sin
+ascensor pero con una terraza que da al oeste. Luis Ferrer, el vecino del cuarto, me ayudó a subir
+la mesa del comedor y luego nos tomamos una caña abajo. Dice que el edificio es ruidoso los sábados.
+
+2024-04-02
+Primer día en la empresa nueva. Trabajo en Acme Warehouse, en el equipo de inventario. Me han dado
+un portátil viejo y tres días de onboarding. El código del almacén está en Java y hay un servicio
+enorme, InventoryService, que toca absolutamente todo.
+
+2024-07-22
+Vacaciones en Benidorm con Luis, mi primo, y su familia. Diez días de playa, paella en el chiringuito
+de la cala y una excursión a Guadalest que terminó con el coche recalentado en la cuesta. Luis se
+empeñó en madrugar para coger sitio en primera línea y al final nos quedamos dormidos hasta las once
+todos los días. Volvimos quemados y contentos.
+
+2024-09-02
+Revisión de arquitectura con el equipo. Mi stack es Java y Spring Boot, y de momento no lo tocamos.
+Luis Marín, el arquitecto, propuso partir el monolito en dos servicios, pero lo dejamos aparcado
+hasta el año que viene. Me llevo la tarea de documentar las reservas de stock.
+
+2024-11-30
+Cierre de trimestre. He escrito la primera versión de reserveStock con bloqueo pesimista porque
+en Black Friday vendimos dos veces la misma unidad. Luis Marín revisó el pull request y me hizo
+partir el método en dos: la reserva blanda y la confirmación.
+
+2025-01-15
+Cumpleaños de mi madre. Comida familiar en casa de mis tíos, con mi primo Luis y los niños
+correteando por el pasillo. Le regalamos una cámara compacta y se pasó la tarde haciendo fotos
+desenfocadas de la tarta.
+
+2025-06-09
+Cambio de trabajo. Trabajo en Nimbus Labs desde hoy, en el equipo de plataforma. Es todo mucho más
+pequeño: seis personas, un repositorio, despliegues los martes. Echaré de menos el almacén pero no
+las reuniones de los lunes.
+
+2026-02-03
+Me he mudado a Valencia. El piso está en Ruzafa, tiene menos metros que el de Madrid pero da a un
+patio interior silencioso y hay luz hasta las siete. La mudanza costó el doble de lo presupuestado
+porque el camión no podía aparcar en la calle.
+
+2026-06-18
+Semana intensa de migración. Migramos a Go y Postgres el backend de facturación, y hemos tirado
+por fin el último servicio en Java. Los tiempos de arranque han bajado de cuarenta segundos a menos
+de uno, que era justo lo que buscábamos.
+
+2026-08-30
+Fin de semana en la playa de El Saler con Luis, mi primo, que vino a ver el piso nuevo. Comparamos
+el viaje con el de Benidorm de hace dos años y coincidimos en que ahora dormimos mejor y madrugamos
+menos. Se vuelve el lunes.

@@ -1,0 +1,8 @@
+# Optional extra: only needed to run mcp_server.py.
+# The IHMT core (ihmt/, main.py, init_ihmt.py) has no dependencies at all.
+#
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements-mcp.txt
+#
+# The server supports MCP SDK 2.x (MCPServer), 1.x (FastMCP) and the standalone
+# fastmcp distribution; 2.x is what the pin below installs.
+mcp[cli]>=2.0

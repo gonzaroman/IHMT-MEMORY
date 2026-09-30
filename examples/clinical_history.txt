@@ -1,0 +1,39 @@
+2024-05-14
+Paciente: Marta Ruiz Belmonte
+Motivo de consulta: cefalea tensional de tres semanas de evolución, predominio vespertino.
+Anamnesis: refiere jornadas de diez horas frente a pantalla, sueño fragmentado, dos cafés por la
+tarde. Sin aura visual, sin fotofobia franca, sin vómitos.
+Exploración: TA 128/82, FC 74. Pares craneales normales. Contractura de trapecio superior derecho.
+Diagnóstico: cefalea tensional episódica
+Tratamiento: ibuprofeno 400 mg a demanda, máximo tres días por semana
+Plan: higiene del sueño, pausas visuales cada 45 minutos, revisión en seis semanas.
+
+2024-06-25
+Paciente: Marta Ruiz Belmonte
+Motivo de consulta: revisión de cefalea. Mejoría parcial.
+Evolución: dos episodios semanales frente a los cinco iniciales. Ha reducido el café de la tarde y
+ha añadido veinte minutos de caminata diaria.
+Exploración: TA 122/78. Persiste contractura cervical leve.
+Diagnóstico: cefalea tensional episódica en remisión parcial
+Tratamiento: ibuprofeno 400 mg a demanda
+Plan: fisioterapia cervical, diez sesiones. Alta si no hay recaída en tres meses.
+
+2025-11-08
+Paciente: Marta Ruiz Belmonte
+Motivo de consulta: episodios de cefalea pulsátil unilateral con náuseas y fotofobia.
+Anamnesis: patrón distinto al de 2024. Cuatro episodios en ocho semanas, duración de seis a doce
+horas, incapacitantes. Desencadenantes referidos: falta de sueño y vino tinto.
+Exploración: neurológica normal intercrisis. TA 118/76.
+Diagnóstico: migraña sin aura
+Tratamiento: sumatriptán 50 mg al inicio del episodio
+Plan: diario de cefaleas durante tres meses, valorar profilaxis si más de cuatro crisis al mes.
+
+2026-03-19
+Paciente: Marta Ruiz Belmonte
+Motivo de consulta: control de migraña. Frecuencia estable en dos crisis mensuales.
+Evolución: buena respuesta al triptán, con recuperación en menos de dos horas. Diario de cefaleas
+completo y bien cumplimentado. No consume analgésicos más de seis días al mes.
+Exploración: TA 120/80. Sin focalidad.
+Diagnóstico: migraña sin aura, bien controlada
+Tratamiento: sumatriptán 50 mg a demanda
+Plan: mantener conducta, revisión anual salvo cambio de patrón.

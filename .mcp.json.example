@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ihmt-memory": {
+      "command": "/absolute/path/to/IHMT-MEMORY/.venv/bin/python",
+      "args": [
+        "/absolute/path/to/IHMT-MEMORY/mcp_server.py"
+      ],
+      "env": {
+        "IHMT_HOME": "/absolute/path/to/IHMT-MEMORY"
+      }
+    }
+  }
+}

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <!-- The browser reads this before downloading the CSS: it avoids the white
+       flash on load when the system uses a light theme. -->
+  <meta name="color-scheme" content="dark">
+  <title>IHMT · Memory</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🌳</text></svg>">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <strong data-i18n="app.title">IHMT · Memoria</strong>
+    <span data-i18n="app.subtitle"></span>
+  </div>
+  <div class="home-chip" id="home-chip" title=""></div>
+  <div class="lang">
+    <button data-lang-btn="es" type="button">ES</button>
+    <button data-lang-btn="en" type="button">EN</button>
+  </div>
+</header>
+
+<nav>
+  <button data-tab="setup" data-i18n="nav.setup" class="is-active"></button>
+  <button data-tab="explore" data-i18n="nav.explore"></button>
+  <button data-tab="diagnose" data-i18n="nav.diagnose"></button>
+  <button data-tab="timeline" data-i18n="nav.timeline"></button>
+</nav>
+
+<main>
+
+  <!-- ================================================================= SETUP -->
+  <section id="tab-setup">
+    <div class="panel verdict" id="verdict"></div>
+
+    <div class="panel">
+      <h2 data-i18n="setup.heading"></h2>
+      <p class="intro" data-i18n="setup.intro"></p>
+
+      <div class="row">
+        <div class="grow">
+          <input type="text" id="home-input" spellcheck="false" autocomplete="off">
+        </div>
+        <button class="btn" id="btn-browse" data-i18n="common.browse"></button>
+        <button class="btn" id="btn-use-home" data-i18n="common.use"></button>
+      </div>
+
+      <div id="folder-browser" hidden>
+        <p class="note" id="folder-current"></p>
+        <div class="folder-list" id="folder-list"></div>
+      </div>
+
+      <div id="home-state" class="metrics"></div>
+      <div id="home-actions"></div>
+    </div>
+
+    <div class="panel">
+      <h2 data-i18n="setup.scopeHeading"></h2>
+      <p class="intro" data-i18n="setup.scopeIntro"></p>
+
+      <div class="scopes">
+        <button class="scope is-active" data-scope="user" type="button">
+          <strong>
+            <span data-i18n="setup.scopeUser"></span>
+            <span class="badge accent" data-i18n="setup.recommended"></span>
+          </strong>
+          <span data-i18n="setup.scopeUserHelp"></span>
+        </button>
+        <button class="scope" data-scope="project" type="button">
+          <strong data-i18n="setup.scopeProject"></strong>
+          <span data-i18n="setup.scopeProjectHelp"></span>
+        </button>
+      </div>
+
+      <div id="project-picker" hidden>
+        <p class="note steps-title" data-i18n="setup.projectHeading"></p>
+        <p class="note" data-i18n="setup.projectHelp"></p>
+        <div class="row">
+          <div class="grow">
+            <input type="text" id="project-input" spellcheck="false" autocomplete="off">
+          </div>
+          <button class="btn" id="btn-browse-project" data-i18n="common.browse"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 data-i18n="setup.previewHeading"></h2>
+      <p class="intro" data-i18n="setup.previewIntro"></p>
+      <div id="preview-warnings"></div>
+      <p class="note" id="preview-label"></p>
+      <pre class="code" id="preview-code"></pre>
+      <div class="row">
+        <button class="btn primary" id="btn-apply" data-i18n="common.apply"></button>
+        <button class="btn" id="btn-copy" data-i18n="common.copy"></button>
+      </div>
+      <div id="apply-result"></div>
+    </div>
+
+  </section>
+
+  <!-- =============================================================== EXPLORE -->
+  <section id="tab-explore" hidden>
+    <div class="panel">
+      <h2 data-i18n="explore.heading"></h2>
+      <p class="intro" data-i18n="explore.intro"></p>
+    </div>
+    <div class="explore-layout">
+      <div class="panel tree-panel">
+        <div class="filter-row" id="domain-filter-row" hidden>
+          <input type="search" id="domain-filter" data-i18n-ph="explore.filterPlaceholder"
+                 spellcheck="false" autocomplete="off">
+        </div>
+        <div class="tree" id="tree"></div>
+        <p class="note" id="domain-filter-empty" hidden></p>
+      </div>
+      <div class="panel leaf-view" id="leaf-view"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================== DIAGNOSE -->
+  <section id="tab-diagnose" hidden>
+    <div class="panel">
+      <h2 data-i18n="diagnose.heading"></h2>
+      <p class="intro" data-i18n="diagnose.intro"></p>
+      <div class="row">
+        <div class="grow"><input type="search" id="q" data-i18n-ph="diagnose.placeholder"></div>
+        <div class="grow"><input type="search" id="clue" data-i18n-ph="diagnose.cluePlaceholder"></div>
+        <button class="btn primary" id="btn-search" data-i18n="diagnose.run"></button>
+      </div>
+    </div>
+    <div class="panel" id="search-results"></div>
+  </section>
+
+  <!-- ============================================================== TIMELINE -->
+  <section id="tab-timeline" hidden>
+    <div class="panel">
+      <h2 data-i18n="timeline.heading"></h2>
+      <p class="intro" data-i18n="timeline.intro"></p>
+    </div>
+    <div class="panel" id="conflicts"></div>
+    <div class="panel">
+      <div class="filter-row">
+        <input type="search" id="timeline-filter" data-i18n-ph="timeline.filterPlaceholder"
+               spellcheck="false" autocomplete="off">
+        <span class="note" id="timeline-count"></span>
+      </div>
+      <div id="facts"></div>
+      <div class="row" id="timeline-more"></div>
+    </div>
+  </section>
+
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Your memory and caches: private, never commit them
+ihmt_memory/
+ihmt_projects/
+demo_workspace/
+
+# Local machine configuration (absolute paths)
+.mcp.json
+.claude/settings.local.json
+.DS_Store
