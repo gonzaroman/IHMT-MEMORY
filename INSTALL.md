@@ -24,7 +24,8 @@ and add usage instructions to your instruction file.
 ## 0. Rules
 
 1. **Configure only the agent you are.** Never register IHMT with, or edit the files of, any other
-   agent unless the user explicitly asks for it.
+   agent unless the user explicitly asks for it — and do not offer to either: the user adds another
+   agent by pasting this same prompt there.
 2. **Always use absolute paths** in every configuration you write. Expand `~` and `$HOME` yourself.
 3. **Reuse an existing installation.** If IHMT is already installed (step 2), use its code folder
    and, above all, **its memory**. Pointing a user who already has memories at a new, empty folder
@@ -298,8 +299,9 @@ cd <REPO> && .venv/bin/python -m unittest discover 2>&1 | tail -3     # expect: 
 
 Finish with a short summary that includes:
 
-1. **What you did:** whether you reused an existing installation (and whether you updated it, or why
-   not) or installed a new one; where the code is (`<REPO>`) and where the memory lives
+1. **What you did:** whether you reused an existing installation or installed a new one. If you
+   reused one, say explicitly whether you updated its code, and if not, why (for example: "not
+   updated: it is not a git clone of the repository"); where the code is (`<REPO>`) and where the memory lives
    (`<HOME_DIR>`); the files you changed and their `.bak-ihmt` backups.
 2. **The one thing they must do now:** start a new session, reload the MCP servers, or restart the
    app, so the memory tools load.
