@@ -508,11 +508,47 @@ Tested with opencode 1.18 and two different models (Meta's Muse Spark and Google
 saving and recalling across sessions, `OUTDATED` and `AMBIGUOUS` handling, searching/saving on its own
 when `AGENTS.md` tells it to, and sharing one memory with Claude Code.
 
-**1. Install IHMT's MCP package** — [step 5.1](#51-install-the-mcp-package-in-a-virtual-environment),
-if you have not already.
+**1. Download IHMT and install its MCP package.** Skip what you already did in sections 4 and 5.1.
 
-**2. Register the server.** Open opencode's global config, `~/.config/opencode/opencode.json` (or
-`opencode.jsonc`; create it if it does not exist), and add an `mcp` entry:
+```bash
+git clone https://github.com/gonzaroman/IHMT-MEMORY.git
+cd IHMT-MEMORY
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-mcp.txt
+```
+
+Check that opencode is installed: `opencode --version`.
+
+**2. Get the entry with your paths already filled in.** Still inside the `IHMT-MEMORY` folder, run:
+
+```bash
+printf '"ihmt-memory": {\n  "type": "local",\n  "command": ["%s/.venv/bin/python", "%s/mcp_server.py"],\n  "environment": { "IHMT_HOME": "%s" },\n  "enabled": true\n}\n' "$PWD" "$PWD" "$PWD"
+```
+
+It prints something like this, with your real folder instead of `/Users/you/IHMT-MEMORY`:
+
+```
+"ihmt-memory": {
+  "type": "local",
+  "command": ["/Users/you/IHMT-MEMORY/.venv/bin/python", "/Users/you/IHMT-MEMORY/mcp_server.py"],
+  "environment": { "IHMT_HOME": "/Users/you/IHMT-MEMORY" },
+  "enabled": true
+}
+```
+
+That `IHMT_HOME` keeps the memory inside the `IHMT-MEMORY` folder (in `ihmt_memory/`, which git
+ignores). If you already use IHMT with Claude Code or Codex, replace it with the same folder they use,
+so all your agents share one memory.
+
+**3. Add it to opencode's config.** The global config is `~/.config/opencode/opencode.json` (or
+`opencode.jsonc`). If you have never created it:
+
+```bash
+mkdir -p ~/.config/opencode
+open -e ~/.config/opencode/opencode.json 2>/dev/null || nano ~/.config/opencode/opencode.json
+```
+
+Paste the entry inside an `"mcp"` block, so the whole file looks like this:
 
 ```jsonc
 {
@@ -544,7 +580,10 @@ if you have not already.
 No approval setting is needed: opencode lets MCP tools run by default. (If you have restricted tools
 through opencode's `permission` settings, allow `ihmt-memory_*`.)
 
-**3. Check it.**
+*(Windows, untested: the Python is `.venv\Scripts\python.exe`; inside the JSON, write paths with
+`/` or with doubled backslashes, `\\`.)*
+
+**4. Check it.**
 
 ```bash
 opencode mcp list
@@ -559,7 +598,7 @@ opencode mcp list
 └  1 server(s)
 ```
 
-**4. Tell opencode when to use it.** opencode reads `AGENTS.md`: paste the template from
+**5. Tell opencode when to use it.** opencode reads `AGENTS.md`: paste the template from
 [section 5.4](#54-tell-claude-when-to-use-it-recommended) into `~/.config/opencode/AGENTS.md` (all
 projects) or into a project's `AGENTS.md`. It works unchanged. With it, opencode searches and saves
 on its own:
@@ -573,6 +612,16 @@ on its own:
 
 In opencode the tools appear with the server name as a prefix: `ihmt-memory_search_memory`,
 `ihmt-memory_save_memory`, and so on.
+
+**6. Try it.** Two separate runs, so the second one can only know the answer from the memory:
+
+```bash
+opencode run "Remember this: my favourite code editor is Helix."
+opencode run "What is my favourite code editor?"
+```
+
+The first run should call `ihmt-memory_save_memory`, and the second `ihmt-memory_search_memory` and
+answer Helix. You can also do it inside the opencode interface: just type `opencode` and talk.
 
 **Remove it:** delete the `"ihmt-memory"` entry from the config file.
 
