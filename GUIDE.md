@@ -170,7 +170,7 @@ agent. The core (`ihmt/`, `main.py`, `init_ihmt.py`, `gui.py`) needs nothing bey
 library.
 
 **Missing Python or git?** If you install with your AI agent ([section 4](#4-installation-step-by-step)),
-it checks for them and **offers to install what is missing**, asking you first:
+it checks for them and **installs what is missing** (it is instructed to ask you first):
 
 - **Python** with [uv](https://docs.astral.sh/uv/): it goes into your user folder, with no
   administrator password.

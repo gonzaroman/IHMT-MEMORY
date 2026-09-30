@@ -43,8 +43,8 @@ any of your agents.
 | **An AI agent that can run commands** (Claude Code, Codex, opencode, Copilot in agent mode…) | it installs IHMT and then uses the memory |
 | **Internet, during the installation** | to download the code and the MCP package; not needed afterwards |
 
-**Missing Python or git? Your AI agent will offer to install them for you** — it asks first. Python
-goes in your user folder, with no administrator password. On a brand-new Mac, git may need one click:
+**Missing Python or git? Your AI agent installs them for you** (it is instructed to ask you first).
+Python goes in your user folder, with no administrator password, so nothing system-wide changes. On a brand-new Mac, git may need one click:
 Apple shows a window asking to install its command-line tools.
 
 On a Mac, note that the `python3` that comes with macOS is version 3.9, which is too old — that is why
