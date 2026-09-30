@@ -4,9 +4,10 @@
 > components, storage format) is in [`README.md`](README.md); the instructions for developing IHMT
 > itself with Claude Code are in [`CLAUDE.md`](CLAUDE.md).
 
-> **Compatibility.** Officially supported: **Claude Code**. IHMT is a standard stdio MCP server, so
-> other MCP clients may work, but they are not tested or documented yet — support for other agents is
-> planned (see [Roadmap](#13-roadmap)).
+> **Compatibility.** Officially supported: **Claude Code**. Also tested: **Codex** (CLI and the
+> ChatGPT desktop app) — see [section 5.6](#56-using-it-with-codex-tested). IHMT is a standard stdio
+> MCP server, so other MCP clients may work, but they are not tested or documented yet (see
+> [Roadmap](#13-roadmap)).
 
 ## Contents
 
@@ -14,7 +15,7 @@
 2. [What it is for — and what it is not for](#2-what-it-is-for--and-what-it-is-not-for)
 3. [Requirements](#3-requirements)
 4. [Installation, step by step](#4-installation-step-by-step)
-5. [Connect it to Claude Code](#5-connect-it-to-claude-code)
+5. [Connect it to Claude Code](#5-connect-it-to-claude-code) — and [to Codex](#56-using-it-with-codex-tested)
 6. [Using it day to day with Claude Code](#6-using-it-day-to-day-with-claude-code)
 7. [The graphical interface](#7-the-graphical-interface)
 8. [The command line (CLI)](#8-the-command-line-cli)
@@ -158,6 +159,7 @@ Typical uses:
 | **Python 3.10 or newer** | everything | `python3 --version` |
 | **git** | cloning the repository | `git --version` |
 | **Claude Code CLI** | using the memory from Claude Code (section 5) | `claude --version` |
+| *or* **Codex** | using the memory from Codex instead ([5.6](#56-using-it-with-codex-tested)) | `codex --version` |
 | The `mcp` Python package | only the MCP server; installed in step 5.1 | — |
 
 Operating systems: **tested on macOS and Linux.** Windows should work, but it is **not tested**; where
@@ -418,11 +420,91 @@ across all your projects. Give a project its own `IHMT_HOME` (project scope) and
 separate memory. You can combine both: if a user-scope and a project-scope registration both apply,
 the project one wins, and the graphical interface tells you which one is in charge.
 
+### 5.6 Using it with Codex (tested)
+
+IHMT also works with **Codex**, OpenAI's coding agent — both the CLI and the Codex that now ships
+inside the ChatGPT desktop app. Tested with `codex-cli 0.145`: saving and recalling across sessions,
+`OUTDATED` and `AMBIGUOUS` handling, and searching/saving on its own when `AGENTS.md` tells it to.
+Claude Code remains the reference client; the graphical interface only registers Claude Code.
+
+**1. Find the `codex` command.** If `codex --version` works, skip this. On macOS, the ChatGPT app
+bundles it at:
+
+```bash
+/Applications/ChatGPT.app/Contents/Resources/codex --version
+```
+
+Use that full path in the commands below, or install the Codex CLI on its own following OpenAI's
+instructions.
+
+**2. Install IHMT's MCP package** — [step 5.1](#51-install-the-mcp-package-in-a-virtual-environment),
+if you have not already.
+
+**3. Register the server.** From inside the `IHMT-MEMORY` folder:
+
+```bash
+codex mcp add ihmt-memory --env IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
+```
+
+This writes to `~/.codex/config.toml` (all projects). As with Claude Code, `IHMT_HOME` is where the
+memory lives: use an absolute path, and point it at the **same folder Claude Code uses** if you want
+both agents to share one memory — what one saves, the other finds.
+
+**4. Let Codex call the tools without asking every time.** Open `~/.codex/config.toml` and add
+`default_tools_approval_mode = "approve"` to the server's **main** table, so the entry ends up like
+this:
+
+```toml
+[mcp_servers.ihmt-memory]
+command = "/absolute/path/to/IHMT-MEMORY/.venv/bin/python"
+args = ["/absolute/path/to/IHMT-MEMORY/mcp_server.py"]
+default_tools_approval_mode = "approve"
+
+[mcp_servers.ihmt-memory.env]
+IHMT_HOME = "/absolute/path/to/where/the/memory/lives"
+```
+
+> **Put the line above `[mcp_servers.ihmt-memory.env]`, not at the end of the file.** Appended at
+> the end, it lands inside the `env` table and becomes an environment variable instead of a setting.
+
+Without this line, the ChatGPT app asks for permission on every memory call, and `codex exec` (the
+non-interactive mode) cancels the calls outright with `user cancelled MCP tool call`, because nobody
+is there to approve them.
+
+You can also skip `codex mcp add` and paste the whole block above into `config.toml` by hand.
+
+**5. Check it.**
+
+```bash
+codex mcp list
+```
+
+```
+Name         Command                          Args                             Env              Cwd  Status   Auth
+ihmt-memory  /…/IHMT-MEMORY/.venv/bin/python  /…/IHMT-MEMORY/mcp_server.py     IHMT_HOME=*****  -    enabled  Unsupported
+```
+
+`enabled` is what matters; `Auth: Unsupported` is normal for a local server.
+
+**6. Tell Codex when to use it.** Codex reads `AGENTS.md` instead of `CLAUDE.md`. Paste the
+template from [section 5.4](#54-tell-claude-when-to-use-it-recommended) into `~/.codex/AGENTS.md`
+(all projects) or into a project's `AGENTS.md`. It works unchanged. With it, Codex searches before
+answering and saves durable facts on its own:
+
+> **You:** Heads up: I've switched my default shell from zsh to fish this week.
+> → Codex calls `search_memory`, then `save_memory`: *"Noted and saved: fish is now your default shell."*
+>
+> **You, in a new session:** Which shell do I use now?
+> → Codex calls `search_memory`: *"Your default shell is fish."*
+
+**Remove it:** `codex mcp remove ihmt-memory`.
+
 ---
 
 ## 6. Using it day to day with Claude Code
 
-Once connected, you just talk. Claude decides when to search and when to save; you can also ask
+Once connected, you just talk. Claude decides when to search and when to save (Codex behaves the
+same way, with the same tools and outputs); you can also ask
 explicitly ("remember that…", "what did we decide about…").
 
 The server exposes **eight tools** in three families. Below, each one with a **real** output.
@@ -1077,6 +1159,11 @@ MCP servers load when a session starts. After registering or updating, start a n
 reconnect with `/mcp`. Also remember that tools may be loaded on demand (deferred), so not seeing them
 listed does not mean they are unavailable — `/mcp` is the reliable check.
 
+**Codex: `user cancelled MCP tool call`.**
+The server works, but Codex was not allowed to call its tools. Add
+`default_tools_approval_mode = "approve"` to the `[mcp_servers.ihmt-memory]` table — above its `env`
+table (step 4 of [section 5.6](#56-using-it-with-codex-tested)).
+
 **The memory ended up in an unexpected folder.**
 `IHMT_HOME` was relative or missing. Always use an absolute path; when it is missing, the server uses
 the repository folder.
@@ -1120,11 +1207,13 @@ Small: it is text. 1,000 notes are about 1,145 small files.
 
 ## 13. Roadmap
 
-- **Other agents.** Documented and tested setups for other MCP clients (Codex CLI, Gemini CLI,
-  Cursor, VS Code…), an `AGENTS.md` instruction template, and possibly an HTTP transport for clients
-  that only speak to remote servers.
+- **Other agents.** ~~Codex~~ (done, [section 5.6](#56-using-it-with-codex-tested)). Next: tested
+  setups for Gemini CLI, Cursor, VS Code…, Codex support in the graphical interface, and possibly an
+  HTTP transport for clients that only talk to remote servers (such as ChatGPT's web connectors).
 - **Batched project tools**: several ranges or queries per `read_file` / `find_code` call, full
   relative paths in headers, shorter default answers.
+- **Prefer the current version of a fact**: "where do I live?" currently returns `AMBIGUOUS`
+  between an old address and the new one instead of answering with the active one.
 - **Faster bulk ingestion**: batch catalog writes during ingest, as the project index already does.
 
 ---
@@ -1137,6 +1226,8 @@ git clone https://github.com/gonzaroman/IHMT-MEMORY.git && cd IHMT-MEMORY
 python3 -m venv .venv && .venv/bin/pip install -r requirements-mcp.txt
 claude mcp add ihmt-memory -s user -e IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
 claude mcp list                              # → ✔ Connected
+# …or with Codex (then add default_tools_approval_mode = "approve", see §5.6)
+codex mcp add ihmt-memory --env IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
 
 # start
 python3 gui.py                               # graphical interface (set up and explore)

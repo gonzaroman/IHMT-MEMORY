@@ -18,9 +18,9 @@ opened grows with the *depth* of the tree (`≈ beam × log_B(n)`), not with the
 | Ambiguity | returns a plausible guess | asks you for a clue |
 | Storage | binary index | UTF-8 `.txt` + JSON you can read |
 
-> **Compatibility.** Officially supported: **Claude Code**. IHMT is a standard stdio MCP server, so
-> other MCP clients may work, but they are not tested or documented yet — support for other agents is
-> planned.
+> **Compatibility.** Officially supported: **Claude Code**. Also tested: **Codex** (CLI and the
+> ChatGPT desktop app) — [setup](GUIDE.md#56-using-it-with-codex-tested). IHMT is a standard stdio MCP
+> server, so other MCP clients may work, but they are not tested or documented yet.
 
 Your memory is **local and private**: a folder on your disk that IHMT never uploads or shares. Every
 person who installs IHMT starts with their own, empty memory.
@@ -49,6 +49,12 @@ claude mcp list                     # ihmt-memory … ✔ Connected
 [GUIDE.md §5.4](GUIDE.md#54-tell-claude-when-to-use-it-recommended) has a ready-to-paste template.
 Windows, the project scope, the graphical setup and troubleshooting are all covered in the
 [guide](GUIDE.md#5-connect-it-to-claude-code).
+
+**Using Codex?** Register it with
+`codex mcp add ihmt-memory --env IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"`,
+then add `default_tools_approval_mode = "approve"` to the `[mcp_servers.ihmt-memory]` table in
+`~/.codex/config.toml` and put the instructions in `AGENTS.md` — details in
+[GUIDE.md §5.6](GUIDE.md#56-using-it-with-codex-tested).
 
 ## Quick start
 
