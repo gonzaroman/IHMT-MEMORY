@@ -50,7 +50,8 @@ The default location for the code is `~/IHMT-MEMORY`.
 - If the current working directory is already a clone of this repository (it contains
   `mcp_server.py` and `INSTALL.md`), use it instead.
 - If `~/IHMT-MEMORY` exists and is a clone of this repository, update it: `git -C ~/IHMT-MEMORY pull --ff-only`.
-- Otherwise clone it:
+- Otherwise clone it **straight into `~/IHMT-MEMORY`** — give `git clone` the target folder, do not
+  clone into the current directory:
 
 ```bash
 git clone https://github.com/gonzaroman/IHMT-MEMORY.git ~/IHMT-MEMORY
@@ -208,7 +209,8 @@ The tools usually appear only in a **new** session. In the current session, do n
 call them. If you can call `search_memory` now, run `search_memory("IHMT installation test")`: on a
 fresh memory it answers that nothing is stored yet, which is correct.
 
-Run the test suite as a last sanity check (about 30 seconds):
+Do not write your own test scripts against `mcp_server.py`; the test suite already covers the
+server. Run it as a last sanity check (about 30 seconds):
 
 ```bash
 cd <REPO> && .venv/bin/python -m unittest discover 2>&1 | tail -3     # expect: OK
