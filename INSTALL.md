@@ -21,6 +21,11 @@ IHMT is a long-term memory MCP server (Python, stdio). Installing it means: find
 make sure its virtual environment has the MCP SDK, register the server with **the agent you are**,
 and add usage instructions to your instruction file.
 
+**Operating system.** The commands below are for macOS and Linux (bash/zsh). **On Windows, use
+PowerShell and the blocks marked *Windows*** instead of the bash ones; where this file says `~`, it
+means `%USERPROFILE%` (for example `C:\Users\alice`). macOS and Linux are tested; Windows is not
+yet.
+
 ## 0. Rules
 
 1. **Configure only the agent you are.** Never register IHMT with, or edit the files of, any other
@@ -55,9 +60,21 @@ git --version
 curl --version | head -1
 ```
 
+*Windows (PowerShell, untested):*
+
+```powershell
+foreach ($cmd in @('py -3', 'python', 'python3')) {
+  try { Invoke-Expression "$cmd -c `"import sys; print(sys.version_info >= (3, 10), sys.executable)`"" } catch {}
+}
+try { uv python find '>=3.10' } catch {}
+git --version
+```
+
 - **Python:** use the first interpreter that printed `True`, or the path printed by `uv python find`.
-  Call it `<PY>`. Note that `python3` alone is not enough on a Mac: the one that ships with macOS is
-  3.9, so check the others too before concluding Python is missing.
+  Call it `<PY>` and use its full path from here on. `python3` alone is not enough on a Mac: the one
+  that ships with macOS is 3.9, so check the others too before concluding Python is missing. On
+  Windows, `python` can be a Microsoft Store shortcut that prints nothing or offers to open the Store:
+  that does not count as Python.
 - **git** and **curl:** a version line means they are there.
 
 If everything is there, go to step 2.
@@ -82,8 +99,13 @@ curl -LsSf https://astral.sh/uv/install.sh | sh        # prints where it install
 ~/.local/bin/uv python find 3.12                        # prints the new interpreter: that is <PY>
 ```
 
-*Windows (untested):* `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`,
-then `uv python install 3.12` and `uv python find 3.12`.
+*Windows (PowerShell, untested):*
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+& "$env:USERPROFILE\.local\bin\uv.exe" python install 3.12     # use the path the installer printed
+& "$env:USERPROFILE\.local\bin\uv.exe" python find 3.12        # that is <PY>
+```
 
 **git:**
 
@@ -101,11 +123,14 @@ install it with their system's package manager.
 
 ## 2. Look for an existing installation
 
-IHMT may already be installed for another agent. Run this **read-only** check. It looks at the MCP
-configuration of every supported agent and prints each IHMT registration it finds:
+IHMT may already be installed for another agent. Run this **read-only** check with `<PY>`. It looks
+at the MCP configuration of every supported agent and prints each IHMT registration it finds. On
+macOS and Linux, run the block as is (replace `<PY>`). On Windows, save the Python part (between the
+`PY` markers) to a file in your temp folder, e.g. `$env:TEMP\ihmt_detect.py`, and run
+`& <PY> $env:TEMP\ihmt_detect.py`.
 
 ```bash
-python3 - <<'PY'
+<PY> - <<'PY'
 import pathlib, re
 home = pathlib.Path.home()
 configs = [
@@ -173,7 +198,7 @@ git -C <REPO> status --porcelain        # must print nothing (no local changes)
 Then make sure the virtual environment works:
 
 ```bash
-<REPO>/.venv/bin/python -c "import mcp; print('mcp SDK OK')"
+<REPO>/.venv/bin/python -c "import mcp; print('mcp SDK OK')"      # Windows: & <REPO>\.venv\Scripts\python.exe -c "..."
 ```
 
 If that fails, (re)create it as in "New installation". Then go to step 4.
@@ -198,19 +223,44 @@ cd <REPO>
 
 `<PY>` is the Python 3.10+ from step 1 — not necessarily `python3`.
 
-*Windows (untested):* `py -m venv .venv`, `.venv\Scripts\pip install -r requirements-mcp.txt`, and
-the interpreter is `<REPO>\.venv\Scripts\python.exe`.
+**Linux: if `-m venv` fails** with `ensurepip is not available` or `No module named venv` (common on
+Debian and Ubuntu, where venv is a separate package), do not use `sudo`. Create the environment with
+uv instead — install uv as in step 1 if needed, then:
+
+```bash
+rm -rf .venv
+~/.local/bin/uv venv .venv --python <PY>
+~/.local/bin/uv pip install --python .venv/bin/python -r requirements-mcp.txt
+.venv/bin/python -c "import mcp; print('mcp SDK OK')"
+```
+
+(The alternative is for the user to run `sudo apt install python3-venv` themselves.)
+
+*Windows (PowerShell, untested):*
+
+```powershell
+cd <REPO>
+& <PY> -m venv .venv
+.\.venv\Scripts\pip install -r requirements-mcp.txt
+.\.venv\Scripts\python.exe -c "import mcp; print('mcp SDK OK')"
+```
 
 From here on:
 
-- `<PYTHON>` = `<REPO>/.venv/bin/python` (absolute)
+- `<PYTHON>` = `<REPO>/.venv/bin/python` (absolute); on Windows `<REPO>\.venv\Scripts\python.exe`
 - `<SERVER>` = `<REPO>/mcp_server.py` (absolute)
+
+**Writing Windows paths into configuration files:** in JSON, use forward slashes
+(`C:/Users/alice/IHMT-MEMORY/mcp_server.py`) or doubled backslashes (`C:\\Users\\alice\\…`); a
+single backslash breaks the JSON. In TOML (Codex), use single quotes (`'C:\Users\alice\…'`) or
+forward slashes.
 
 ## 4. Where the memory lives (`IHMT_HOME`)
 
 - **Existing installation:** `<HOME_DIR>` is the one found in step 2. Do not change it.
-- **New installation:** use **`~/.ihmt`** (absolute, e.g. `/Users/alice/.ihmt`), unless the user
-  asked for another folder. It keeps the memory apart from the code, so updating or reinstalling IHMT
+- **New installation:** use **`~/.ihmt`** (absolute: `/Users/alice/.ihmt` on macOS,
+  `/home/alice/.ihmt` on Linux, `C:\Users\alice\.ihmt` on Windows), unless the user asked for
+  another folder. It keeps the memory apart from the code, so updating or reinstalling IHMT
   never touches it. Create it with `mkdir -p`; the server creates `ihmt_memory/` inside on first use.
 
 ## 5. Register the server with the agent you are

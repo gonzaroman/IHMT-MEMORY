@@ -36,7 +36,7 @@ class InstallDetectorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         install = (ROOT / "INSTALL.md").read_text(encoding="utf-8")
-        script = re.search(r"python3 - <<'PY'\n(.*?)\nPY\n", install, re.DOTALL)
+        script = re.search(r"<PY> - <<'PY'\n(.*?)\nPY\n", install, re.DOTALL)
         assert script, "INSTALL.md must contain the detection script"
         cls.script = script.group(1)
 
