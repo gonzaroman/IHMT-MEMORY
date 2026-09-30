@@ -326,12 +326,28 @@ class SetupTests(ApiTestCase):
         self.assertEqual(len(calls), 1, "refreshing must drop what was cached")
 
     def with_probe(self, probe: "setup_mod.Probe") -> None:
-        """Replace the CLI query with a fixed answer."""
-        original = setup_mod.probe_server
+        """Replace the CLI query with a fixed answer.
+
+        The interpreter and CLI lookups are pinned too: otherwise the verdict
+        depends on whether this machine has a ``.venv`` with the MCP SDK and a
+        ``claude`` on the PATH, and a fresh clone would read SDK_MISSING or
+        CLI_MISSING before the probe even counts.
+        """
+        from unittest import mock
+
+        which = mock.patch.object(setup_mod.shutil, "which", return_value="/usr/bin/claude")
+        which.start()
+        self.addCleanup(which.stop)
+        original_probe = setup_mod.probe_server
+        original_interpreter = setup_mod.find_interpreter
         setup_mod.probe_server = lambda cli: probe
+        setup_mod.find_interpreter = lambda: setup_mod.Interpreter(
+            path="/usr/bin/python3", has_mcp=True, is_venv=False
+        )
         setup_mod.invalidate_cache()
         self.addCleanup(setup_mod.invalidate_cache)
-        self.addCleanup(lambda: setattr(setup_mod, "probe_server", original))
+        self.addCleanup(lambda: setattr(setup_mod, "probe_server", original_probe))
+        self.addCleanup(lambda: setattr(setup_mod, "find_interpreter", original_interpreter))
 
     def test_a_pending_project_registration_suggests_the_user_scope(self) -> None:
         # A .mcp.json always asks for approval; the user scope does not.
