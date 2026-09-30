@@ -51,7 +51,8 @@ On a Mac, note that the `python3` that comes with macOS is version 3.9, which is
 your agent may say Python is missing even though `python3` exists.
 
 You do **not** need administrator rights, a database, an account, or any paid service beyond your
-agent. Details: [GUIDE.md §3](GUIDE.md#3-requirements).
+agent. Tested on **macOS** and **Linux** (Ubuntu); on **Windows** the instructions are included but
+not tested yet. Details: [GUIDE.md §3](GUIDE.md#3-requirements).
 
 ### Let your AI agent install it
 

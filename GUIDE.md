@@ -190,8 +190,14 @@ To install them yourself instead:
 > macOS versions. If `python3 --version` says 3.9, install a newer one as above; it does not replace
 > or break the system one.
 
-Operating systems: **tested on macOS.** Linux and Windows should work, but they are **not tested**;
-where commands differ, this guide gives the Windows version marked *(Windows, untested)*.
+Operating systems: **tested on macOS and on Linux** (Ubuntu 24.04, including the assisted
+installation). **Windows:** the instructions are included — PowerShell variants in `INSTALL.md`, and
+the versions marked *(Windows, untested)* in this guide — but it has **not been tested** yet.
+
+> **Linux users:** on Debian and Ubuntu, `python3 -m venv` fails until the `python3-venv` package is
+> installed (`ensurepip is not available`). The assisted installation works around it without
+> administrator rights, by creating the environment with uv; by hand, run
+> `sudo apt install python3-venv` first.
 
 ---
 
