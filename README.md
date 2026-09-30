@@ -27,23 +27,34 @@ any of your agents.
 
 > **Compatibility.** Officially supported: **Claude Code**. Also tested: **Codex** (CLI and the
 > ChatGPT desktop app — [setup](GUIDE.md#56-using-it-with-codex-tested)) and **opencode**
-> ([setup](GUIDE.md#57-using-it-with-opencode-tested)). IHMT is a standard stdio MCP server, so other
-> MCP clients may work, but they are not tested or documented yet. All of them can share one memory.
+> ([setup](GUIDE.md#57-using-it-with-opencode-tested)). IHMT is a standard stdio MCP server, so any
+> agent that supports local MCP servers should work — GitHub Copilot, Antigravity, Cursor, Windsurf,
+> Gemini CLI, Claude Desktop… — and [`INSTALL.md`](INSTALL.md) knows how to configure them, but we have
+> not tested those yet. All of them can share one memory.
 
 ## Install
 
 ### Let your AI agent install it
 
-Paste this into your AI coding agent (**Claude Code**, **Codex** or **opencode**):
+Paste this into the AI agent you want to give a memory to — **Claude Code**, **Codex** and
+**opencode** are tested; **GitHub Copilot**, **Antigravity**, **Cursor**, **Windsurf**, **Gemini CLI**,
+**Claude Desktop** and other MCP clients should work too:
 
 ```
 Install the IHMT memory MCP server for me from https://github.com/gonzaroman/IHMT-MEMORY — follow the instructions in its INSTALL.md.
 ```
 
 The agent follows [`INSTALL.md`](INSTALL.md): it downloads IHMT to `~/IHMT-MEMORY`, keeps your
-memory in `~/.ihmt`, registers the server, adds the usage instructions, and tells you what it did.
-Then start a new session so the memory tools load. It needs an agent that can run terminal
-commands; chat-only assistants in a browser cannot install anything.
+memory in `~/.ihmt`, registers the server **with itself only**, adds the usage instructions, and
+tells you what it did. Then start a new session so the memory tools load.
+
+**Using several agents?** Paste the same prompt in each one, whenever you want. If IHMT is already
+installed — say you have used it with Claude for months and now want it in Codex — the agent finds
+that installation, updates it if it safely can, and connects to the **same memory**, so it knows
+what you told the others from day one.
+
+It needs an agent that can run terminal commands or edit files; chat-only assistants in a browser
+cannot install anything.
 
 <details>
 <summary><b>Manual install</b></summary>

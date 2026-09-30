@@ -6,9 +6,11 @@
 
 > **Compatibility.** Officially supported: **Claude Code**. Also tested: **Codex** (CLI and the
 > ChatGPT desktop app, [section 5.6](#56-using-it-with-codex-tested)) and **opencode**
-> ([section 5.7](#57-using-it-with-opencode-tested)). IHMT is a standard stdio MCP server, so other
-> MCP clients may work, but they are not tested or documented yet (see [Roadmap](#13-roadmap)).
-> All of them can share one memory.
+> ([section 5.7](#57-using-it-with-opencode-tested)). IHMT is a standard stdio MCP server, so any
+> agent that supports local MCP servers should work — GitHub Copilot, Antigravity, Cursor, Windsurf,
+> Gemini CLI, Claude Desktop… [`INSTALL.md`](INSTALL.md) knows how to configure them, from their
+> official documentation, but we have not tested them yet (see [Roadmap](#13-roadmap)). All of them
+> can share one memory.
 
 ## Contents
 
@@ -173,16 +175,21 @@ The core (`ihmt/`, `main.py`, `init_ihmt.py`, `gui.py`) needs nothing beyond the
 
 ## 4. Installation, step by step
 
-> **The easy way: let your AI agent do it.** Paste this into Claude Code, Codex or opencode:
+> **The easy way: let your AI agent do it.** Paste this into the agent you want to give a memory to
+> (Claude Code, Codex, opencode, GitHub Copilot, Antigravity, Cursor…):
 >
 > ```
 > Install the IHMT memory MCP server for me from https://github.com/gonzaroman/IHMT-MEMORY — follow the instructions in its INSTALL.md.
 > ```
 >
 > The agent follows [`INSTALL.md`](INSTALL.md), which does everything in sections 4 and 5 for you:
-> code in `~/IHMT-MEMORY`, memory in `~/.ihmt`, server registered, usage instructions added. Then
-> start a new session. The rest of this section is for doing it by hand, or for understanding what
-> the agent did.
+> code in `~/IHMT-MEMORY`, memory in `~/.ihmt`, server registered with **that agent only**, usage
+> instructions added. Then start a new session.
+>
+> To add another agent later, paste the same prompt there. It detects the existing installation
+> and connects to the same memory instead of starting a new one.
+>
+> The rest of this section is for doing it by hand, or for understanding what the agent did.
 
 ### 4.1 Get the code
 
@@ -1360,8 +1367,9 @@ Small: it is text. 1,000 notes are about 1,145 small files.
 ## 13. Roadmap
 
 - **Other agents.** ~~Codex~~ and ~~opencode~~ (done, sections [5.6](#56-using-it-with-codex-tested)
-  and [5.7](#57-using-it-with-opencode-tested)). Next: tested setups for Gemini CLI, Cursor, VS Code…,
-  Codex and opencode support in the graphical interface, and possibly an
+  and [5.7](#57-using-it-with-opencode-tested)). Next: test the configurations `INSTALL.md` already
+  describes for GitHub Copilot, Antigravity, Cursor, Windsurf, Gemini CLI and Claude Desktop; Codex
+  and opencode support in the graphical interface; and possibly an
   HTTP transport for clients that only talk to remote servers (such as ChatGPT's web connectors).
 - **Batched project tools**: several ranges or queries per `read_file` / `find_code` call, full
   relative paths in headers, shorter default answers.
