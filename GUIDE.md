@@ -173,14 +173,25 @@ The core (`ihmt/`, `main.py`, `init_ihmt.py`, `gui.py`) needs nothing beyond the
 
 ## 4. Installation, step by step
 
+> **The easy way: let your AI agent do it.** Paste this into Claude Code, Codex or opencode:
+>
+> ```
+> Install the IHMT memory MCP server for me from https://github.com/gonzaroman/IHMT-MEMORY — follow the instructions in its INSTALL.md.
+> ```
+>
+> The agent follows [`INSTALL.md`](INSTALL.md), which does everything in sections 4 and 5 for you:
+> code in `~/IHMT-MEMORY`, memory in `~/.ihmt`, server registered, usage instructions added. Then
+> start a new session. The rest of this section is for doing it by hand, or for understanding what
+> the agent did.
+
 ### 4.1 Get the code
 
 ```bash
-git clone https://github.com/gonzaroman/IHMT-MEMORY.git
-cd IHMT-MEMORY
+git clone https://github.com/gonzaroman/IHMT-MEMORY.git ~/IHMT-MEMORY
+cd ~/IHMT-MEMORY
 ```
 
-Everything below assumes you are inside that folder. Pick a permanent location: Claude Code will
+Everything below assumes you are inside that folder. Pick a permanent location: your agents will
 point at this folder by absolute path, so moving it later means re-registering (see
 [Maintenance](#121-maintenance)).
 
@@ -221,28 +232,29 @@ you.
 **From the terminal:**
 
 ```bash
-python3 init_ihmt.py                      # creates ./ihmt_memory in the current folder
-python3 init_ihmt.py --path ~/ihmt-home   # or anywhere else
+python3 init_ihmt.py --path ~/.ihmt       # recommended: memory apart from the code
+python3 init_ihmt.py                      # or: ./ihmt_memory inside the current folder
 ```
 
 Output:
 
 ```
-IHMT store ready at /Users/you/IHMT-MEMORY/ihmt_memory
+IHMT store ready at /Users/you/.ihmt/ihmt_memory
   trunk           : root.json
-  leaves (layer 0): /Users/you/IHMT-MEMORY/ihmt_memory/layer_0
-  branches        : /Users/you/IHMT-MEMORY/ihmt_memory/layers/1..N
-  state           : /Users/you/IHMT-MEMORY/ihmt_memory/state
+  leaves (layer 0): /Users/you/.ihmt/ihmt_memory/layer_0
+  branches        : /Users/you/.ihmt/ihmt_memory/layers/1..N
+  state           : /Users/you/.ihmt/ihmt_memory/state
   config          : branch_factor=8, target_tokens=2000, max_tokens=3000, backend=heuristic
   contents        : 0 leaves, 0 nodes, depth 0
 ```
 
 You can also skip this step: the MCP server creates the memory automatically the first time it runs.
 
-> **Where should the memory live?** By default, inside the repository folder (`ihmt_memory/` is
-> already in `.gitignore`, so it is never committed). If you prefer to keep code and data apart —
-> handy for backups and updates — create it elsewhere, e.g. `~/ihmt-home`, and use that path as
-> `IHMT_HOME` in the next section.
+> **Where should the memory live?** We recommend **`~/.ihmt`**, apart from the code: updating or
+> reinstalling IHMT never touches it, and taking your memory to another computer means copying one
+> folder. Inside the repository folder also works (`ihmt_memory/` is in `.gitignore`, so it is never
+> committed), but then deleting the repository to reinstall would delete your memory too. Whatever
+> you choose, use that folder as `IHMT_HOME` in the next section.
 
 ---
 
@@ -285,7 +297,7 @@ There are two scopes. Choose one.
 From inside the `IHMT-MEMORY` folder:
 
 ```bash
-claude mcp add ihmt-memory -s user -e IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
+claude mcp add ihmt-memory -s user -e IHMT_HOME="$HOME/.ihmt" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
 ```
 
 What each part means:
@@ -293,16 +305,16 @@ What each part means:
 - `ihmt-memory` — the server's name. **It must come before `-e`**: `-e` accepts several values, so a
   name placed after it would be swallowed as another environment variable.
 - `-s user` — user scope: available in every project.
-- `-e IHMT_HOME="$PWD"` — **where the memory lives**: the folder that contains (or will contain)
-  `ihmt_memory/`. Use an absolute path. If you created the memory elsewhere, put that folder here,
-  e.g. `-e IHMT_HOME="$HOME/ihmt-home"`.
+- `-e IHMT_HOME="$HOME/.ihmt"` — **where the memory lives**: the folder that contains (or will
+  contain) `ihmt_memory/`; it is created on first use. Use an absolute path (`$HOME` expands to
+  one). If your memory is elsewhere, put that folder here.
 - `--` — everything after it is the command that starts the server: the venv's Python and
   `mcp_server.py`, both as absolute paths (`$PWD` expands to them).
 
 *(Windows, untested)*
 
 ```powershell
-claude mcp add ihmt-memory -s user -e IHMT_HOME="$PWD" -- "$PWD\.venv\Scripts\python.exe" "$PWD\mcp_server.py"
+claude mcp add ihmt-memory -s user -e IHMT_HOME="$HOME\.ihmt" -- "$PWD\.venv\Scripts\python.exe" "$PWD\mcp_server.py"
 ```
 
 #### Option B — project scope
@@ -365,7 +377,8 @@ A quick end-to-end test in a new Claude Code session:
 
 The server already sends Claude brief instructions, but the most reliable way is to add a few lines
 to your personal `~/.claude/CLAUDE.md`, which Claude Code reads in every project. Copy this block and
-adapt it:
+adapt it (it is also in the repository as
+[`templates/memory-instructions.md`](templates/memory-instructions.md), ready to append):
 
 ```markdown
 # Memory: use IHMT
@@ -445,7 +458,7 @@ if you have not already.
 **3. Register the server.** From inside the `IHMT-MEMORY` folder:
 
 ```bash
-codex mcp add ihmt-memory --env IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
+codex mcp add ihmt-memory --env IHMT_HOME="$HOME/.ihmt" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
 ```
 
 This writes to `~/.codex/config.toml` (all projects). As with Claude Code, `IHMT_HOME` is where the
@@ -522,7 +535,7 @@ Check that opencode is installed: `opencode --version`.
 **2. Get the entry with your paths already filled in.** Still inside the `IHMT-MEMORY` folder, run:
 
 ```bash
-printf '"ihmt-memory": {\n  "type": "local",\n  "command": ["%s/.venv/bin/python", "%s/mcp_server.py"],\n  "environment": { "IHMT_HOME": "%s" },\n  "enabled": true\n}\n' "$PWD" "$PWD" "$PWD"
+printf '"ihmt-memory": {\n  "type": "local",\n  "command": ["%s/.venv/bin/python", "%s/mcp_server.py"],\n  "environment": { "IHMT_HOME": "%s" },\n  "enabled": true\n}\n' "$PWD" "$PWD" "$HOME/.ihmt"
 ```
 
 It prints something like this, with your real folder instead of `/Users/you/IHMT-MEMORY`:
@@ -531,14 +544,13 @@ It prints something like this, with your real folder instead of `/Users/you/IHMT
 "ihmt-memory": {
   "type": "local",
   "command": ["/Users/you/IHMT-MEMORY/.venv/bin/python", "/Users/you/IHMT-MEMORY/mcp_server.py"],
-  "environment": { "IHMT_HOME": "/Users/you/IHMT-MEMORY" },
+  "environment": { "IHMT_HOME": "/Users/you/.ihmt" },
   "enabled": true
 }
 ```
 
-That `IHMT_HOME` keeps the memory inside the `IHMT-MEMORY` folder (in `ihmt_memory/`, which git
-ignores). If you already use IHMT with Claude Code or Codex, replace it with the same folder they use,
-so all your agents share one memory.
+That `IHMT_HOME` keeps the memory in `~/.ihmt`, apart from the code. If you already use IHMT with
+Claude Code or Codex, replace it with the same folder they use, so all your agents share one memory.
 
 **3. Add it to opencode's config.** The global config is `~/.config/opencode/opencode.json` (or
 `opencode.jsonc`). If you have never created it:
@@ -1245,18 +1257,32 @@ python3 main.py --path "$IHMT_HOME" rebuild               # rebuild catalog, tim
 python3 main.py --path "$IHMT_HOME" consolidate --force   # close the tree up to the root
 ```
 
-**Moved the IHMT-MEMORY folder?** The registration holds absolute paths. Remove and add again:
+**Moved the IHMT-MEMORY folder?** The registration holds absolute paths. Remove and add again, from
+the new location:
 
 ```bash
 claude mcp remove ihmt-memory -s user
-claude mcp add ihmt-memory -s user -e IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
+claude mcp add ihmt-memory -s user -e IHMT_HOME="$HOME/.ihmt" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
 ```
+
+**Move your memory to another computer.** The memory is one self-contained folder: every path inside
+it is relative, so it works wherever you put it.
+
+1. On the old computer, copy the folder — `IHMT_HOME`, e.g. `~/.ihmt` — to the new one (USB drive,
+   `rsync -a ~/.ihmt/ newmachine:~/.ihmt/`, a cloud drive…).
+2. On the new computer, install IHMT (ask your agent, or sections 4–5) with `IHMT_HOME` pointing at
+   the copied folder. The installer reuses an existing memory; it never overwrites one.
+3. Optional check: `python3 ~/IHMT-MEMORY/main.py --path ~/.ihmt stats` shows the same counts as on
+   the old computer. If anything looks off, `python3 ~/IHMT-MEMORY/main.py --path ~/.ihmt rebuild`.
+
+Do not use the **same** copy from two computers at once (for example, a synced folder open on both):
+IHMT assumes a single writer. Copy it, or move it, but keep one active copy.
 
 **Uninstall.**
 
 ```bash
 claude mcp remove ihmt-memory -s user     # or delete the entry from the project's .mcp.json
-rm -rf /path/to/IHMT-MEMORY               # this deletes the memory too if IHMT_HOME pointed inside
+rm -rf /path/to/IHMT-MEMORY               # the code; your memory in ~/.ihmt stays unless you delete it too
 ```
 
 ### 12.2 Troubleshooting
@@ -1349,12 +1375,14 @@ Small: it is text. 1,000 notes are about 1,145 small files.
 
 ```bash
 # install
-git clone https://github.com/gonzaroman/IHMT-MEMORY.git && cd IHMT-MEMORY
+# easiest: ask your agent — "Install the IHMT memory MCP server for me from
+#   https://github.com/gonzaroman/IHMT-MEMORY — follow the instructions in its INSTALL.md."
+git clone https://github.com/gonzaroman/IHMT-MEMORY.git ~/IHMT-MEMORY && cd ~/IHMT-MEMORY
 python3 -m venv .venv && .venv/bin/pip install -r requirements-mcp.txt
-claude mcp add ihmt-memory -s user -e IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
+claude mcp add ihmt-memory -s user -e IHMT_HOME="$HOME/.ihmt" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
 claude mcp list                              # → ✔ Connected
 # …or with Codex (then add default_tools_approval_mode = "approve", see §5.6)
-codex mcp add ihmt-memory --env IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
+codex mcp add ihmt-memory --env IHMT_HOME="$HOME/.ihmt" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
 # …or with opencode: add the "mcp" block to ~/.config/opencode/opencode.json (see §5.7)
 opencode mcp list                            # → ✓ ihmt-memory connected
 

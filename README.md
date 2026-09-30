@@ -1,5 +1,95 @@
 # IHMT — Infinite Hierarchical Memory Tree
 
+**Long-term memory for your AI coding agents.** Tell your agent something once — a decision, how
+your setup works, a correction — and it remembers it in every future session, in any project, with
+any of your agents.
+
+## What IHMT does
+
+- **Remembers across sessions.** Decisions and their reasons, your environment, your preferences,
+  people and projects, corrections. Your agent searches the memory before answering and saves what
+  lasts, so you stop repeating yourself.
+- **One memory for all your agents and models.** Claude Code, Codex and opencode can share the same
+  memory: what one saves, the others find. Tested with models from Anthropic, OpenAI, Google and Meta.
+- **Saves tokens.** Instead of pasting your notes or re-explaining context every session, the agent
+  retrieves only what the question needs — typically 200–900 tokens, whether the memory holds 50
+  entries or 50,000, because search walks a tree instead of reading everything.
+  [Honest numbers](GUIDE.md#11-honest-numbers), including where it does *not* save.
+- **Understands time.** When something changes ("I moved to Valencia"), the old fact is kept as
+  history and flagged `OUTDATED` if it comes up. When a question is ambiguous ("Luis" — which one?),
+  it asks instead of guessing.
+- **Portable.** Your memory is one folder of plain text files. Copy it to another computer, back it
+  up, or put it under version control — it works wherever you put it.
+- **Local, private and readable.** No cloud, no database, no account: IHMT stores everything on your
+  disk and sends nothing anywhere. (The memories your agent retrieves reach its model like any other
+  context.) Every memory is a text file you can open, and each person who installs IHMT starts with
+  their own, empty memory.
+
+> **Compatibility.** Officially supported: **Claude Code**. Also tested: **Codex** (CLI and the
+> ChatGPT desktop app — [setup](GUIDE.md#56-using-it-with-codex-tested)) and **opencode**
+> ([setup](GUIDE.md#57-using-it-with-opencode-tested)). IHMT is a standard stdio MCP server, so other
+> MCP clients may work, but they are not tested or documented yet. All of them can share one memory.
+
+## Install
+
+### Let your AI agent install it
+
+Paste this into your AI coding agent (**Claude Code**, **Codex** or **opencode**):
+
+```
+Install the IHMT memory MCP server for me from https://github.com/gonzaroman/IHMT-MEMORY — follow the instructions in its INSTALL.md.
+```
+
+The agent follows [`INSTALL.md`](INSTALL.md): it downloads IHMT to `~/IHMT-MEMORY`, keeps your
+memory in `~/.ihmt`, registers the server, adds the usage instructions, and tells you what it did.
+Then start a new session so the memory tools load. It needs an agent that can run terminal
+commands; chat-only assistants in a browser cannot install anything.
+
+<details>
+<summary><b>Manual install</b></summary>
+
+Requirements: Python 3.10+, git, and your agent's CLI.
+
+```bash
+git clone https://github.com/gonzaroman/IHMT-MEMORY.git ~/IHMT-MEMORY
+cd ~/IHMT-MEMORY
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-mcp.txt
+mkdir -p ~/.ihmt
+```
+
+**Claude Code**
+
+```bash
+claude mcp add ihmt-memory -s user -e IHMT_HOME="$HOME/.ihmt" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
+claude mcp list                     # ihmt-memory … ✔ Connected
+```
+
+The server name must come before `-e`. Then append
+[`templates/memory-instructions.md`](templates/memory-instructions.md) to `~/.claude/CLAUDE.md`.
+
+**Codex** — `codex mcp add ihmt-memory --env IHMT_HOME="$HOME/.ihmt" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"`,
+then add `default_tools_approval_mode = "approve"` to the `[mcp_servers.ihmt-memory]` table in
+`~/.codex/config.toml` (above its `env` table) and append the template to `~/.codex/AGENTS.md`.
+[Details](GUIDE.md#56-using-it-with-codex-tested).
+
+**opencode** — add an `"ihmt-memory"` entry (`"type": "local"`, `"command": [<python>, <mcp_server.py>]`,
+`"environment": {"IHMT_HOME": <memory folder>}`) to the `"mcp"` object of
+`~/.config/opencode/opencode.json`, and append the template to `~/.config/opencode/AGENTS.md`.
+[Details](GUIDE.md#57-using-it-with-opencode-tested).
+
+Windows, the project scope, the graphical setup and troubleshooting are all in the
+[guide](GUIDE.md#4-installation-step-by-step).
+
+</details>
+
+**New here? Read [`GUIDE.md`](GUIDE.md)** — everyday use, step by step, with real outputs. The rest
+of this README is the technical reference.
+
+---
+
+## How it works
+
 A universal, domain-agnostic long-term memory for LLMs, stored as a recursive tree of plain files on
 the local disk. No vector database, no server, **no third-party dependencies** — Python 3.10+ and the
 standard library.
@@ -17,50 +107,6 @@ opened grows with the *depth* of the tree (`≈ beam × log_B(n)`), not with the
 | Stale facts | served silently | superseded, dated, and flagged |
 | Ambiguity | returns a plausible guess | asks you for a clue |
 | Storage | binary index | UTF-8 `.txt` + JSON you can read |
-
-> **Compatibility.** Officially supported: **Claude Code**. Also tested: **Codex** (CLI and the
-> ChatGPT desktop app — [setup](GUIDE.md#56-using-it-with-codex-tested)) and **opencode**
-> ([setup](GUIDE.md#57-using-it-with-opencode-tested)). IHMT is a standard stdio MCP server, so other
-> MCP clients may work, but they are not tested or documented yet. All of them can share one memory.
-
-Your memory is **local and private**: a folder on your disk that IHMT never uploads or shares. Every
-person who installs IHMT starts with their own, empty memory.
-
-**New here? Read [`GUIDE.md`](GUIDE.md)** — installation and everyday use, step by step, with real
-outputs. This README is the technical reference.
-
----
-
-## Install
-
-Requirements: Python 3.10+, git, and the [Claude Code](https://claude.com/claude-code) CLI to use it
-as memory for Claude.
-
-```bash
-git clone https://github.com/gonzaroman/IHMT-MEMORY.git
-cd IHMT-MEMORY
-python3 -m venv .venv
-.venv/bin/pip install -r requirements-mcp.txt
-claude mcp add ihmt-memory -s user -e IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"
-claude mcp list                     # ihmt-memory … ✔ Connected
-```
-
-`IHMT_HOME` is where the memory will live (created on first use); the server name must come before
-`-e`. Then add the usage instructions to your `~/.claude/CLAUDE.md` —
-[GUIDE.md §5.4](GUIDE.md#54-tell-claude-when-to-use-it-recommended) has a ready-to-paste template.
-Windows, the project scope, the graphical setup and troubleshooting are all covered in the
-[guide](GUIDE.md#5-connect-it-to-claude-code).
-
-**Using Codex?** Register it with
-`codex mcp add ihmt-memory --env IHMT_HOME="$PWD" -- "$PWD/.venv/bin/python" "$PWD/mcp_server.py"`,
-then add `default_tools_approval_mode = "approve"` to the `[mcp_servers.ihmt-memory]` table in
-`~/.codex/config.toml` and put the instructions in `AGENTS.md` — details in
-[GUIDE.md §5.6](GUIDE.md#56-using-it-with-codex-tested).
-
-**Using opencode?** Add an `"mcp"` entry to `~/.config/opencode/opencode.json` —
-`"ihmt-memory": {"type": "local", "command": ["<abs>/.venv/bin/python", "<abs>/mcp_server.py"],
-"environment": {"IHMT_HOME": "<abs>"}}` — and put the instructions in `~/.config/opencode/AGENTS.md`;
-details in [GUIDE.md §5.7](GUIDE.md#57-using-it-with-opencode-tested).
 
 ## Quick start
 
@@ -468,6 +514,8 @@ ihmt_gui/                   local graphical interface (stdlib only)
 mcp_server.py               MCP server: the eight tools
 init_ihmt.py · main.py · gui.py · examples/ · tests/
 GUIDE.md                    installation and usage guide
+INSTALL.md                  installation instructions for AI agents
+templates/                  memory-instructions.md: the usage rules agents append to CLAUDE.md / AGENTS.md
 ```
 
 ## License
