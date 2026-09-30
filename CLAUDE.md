@@ -10,27 +10,14 @@ Retrieval walks the tree (`≈ beam_width × log_B(n)` file reads) instead of sc
 
 ## Commands
 
-```bash
-python main.py demo                  # end-to-end walkthrough, writes ./demo_workspace
-python gui.py [--path DIR] [--port N] [--no-browser]   # local web UI: set up + browse
-python init_ihmt.py                  # create ./ihmt_memory
-python main.py search "query"        # CLI equivalent of the search_memory tool
-python main.py ask "Luis" --clue X   # clue loop, non-interactively
-python main.py consolidate --force   # close the tree up to the root
-python main.py tree | stats | facts | conflicts | rebuild
-```
-
-`--path DIR` selects the store and `--json` gives machine-readable output; both work before or after
+`python main.py --help` lists the subcommands. `--path DIR` selects the store and `--json` gives machine-readable output; both work before or after
 the subcommand.
 
 ### Tests
 
 ```bash
-python -m unittest discover                      # 187 tests; the 25 MCP ones skip without the SDK
-python -m unittest tests.test_navigator          # one module
-python -m unittest tests.test_chunkers.CodeChunkingTests.test_java_chunks_reconstruct_the_source_byte_for_byte
-python -m unittest discover -k clue              # by name pattern
-.venv/bin/python -m unittest discover            # includes the 25 MCP tests
+python -m unittest discover                      # the MCP tests skip without the SDK
+.venv/bin/python -m unittest discover            # includes the MCP tests
 ```
 
 Run from the repository root — `tests/` is a package using relative imports, so
@@ -113,11 +100,6 @@ goes blind. Bulk writes go through `MemoryStore.batch()`, which writes the catal
 of once per leaf.
 
 In `mcp_server.py`, **stdout is the JSON-RPC channel**: log to stderr, never `print()`.
-
-`ihmt_gui/` is a separate package layered on the same public API — it never imports IHMT internals.
-Its route tables map URL parameter names to method parameter names explicitly
-(`{"id": "node_id"}`); `tests/test_gui.py` checks every mapping against the real signatures, because
-a silent mismatch there surfaces only as a 400 in the browser.
 
 ---
 
