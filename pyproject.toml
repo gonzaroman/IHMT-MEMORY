@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 [project]
 name = "ihmt-memory"
 # Keep equal to the version in mcp_server.py and server.json (tests/test_packaging.py checks it).
-version = "1.3.0"
+version = "1.4.0"
 description = "Long-term memory for AI coding agents as a tree of plain local files, served over MCP."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -73,7 +73,7 @@ from ihmt.models import DataType, IHMTError  # noqa: E402
 from ihmt.project_index import ProjectIndex  # noqa: E402
 from ihmt.semantic_navigator import SCOPES, SearchResponse  # noqa: E402
 from ihmt.textutils import content_terms, estimate_tokens, slugify  # noqa: E402
-from ihmt.transcripts import CONVERSATIONS_DIRNAME, SOURCE_PREFIX  # noqa: E402
+from ihmt.transcripts import CONVERSATIONS_DIRNAME, SOURCE_PREFIX, ConversationCapture  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format="ihmt-mcp: %(message)s")
 logger = logging.getLogger("ihmt.mcp")
@@ -110,7 +110,7 @@ In a codebase prefer `project_map`, `find_code` and `read_file` (answers
 server = _Server(
     name="ihmt-memory",
     instructions=SERVER_INSTRUCTIONS,
-    version="1.3.0",
+    version="1.4.0",
 )
 
 _memory: Optional[IHMT] = None
@@ -803,6 +803,29 @@ def digest_output(text: str, label: str = "output") -> str:
     )
 
 
+# -------------------------------------------------------------------- capture
+def _capture_in_background() -> None:
+    """Store what is new in the agents' session transcripts, without delaying the server.
+
+    Every agent starts this server when a session begins, which makes it the one
+    place where capture needs no per-agent hook: each start picks up whatever the
+    earlier sessions (of any agent) left behind. ``IHMT_CAPTURE=0`` turns it off.
+    """
+    if os.environ.get("IHMT_CAPTURE", "1").strip().lower() in ("0", "false", "no", "off"):
+        return
+
+    def sweep() -> None:
+        try:
+            capture = ConversationCapture(IHMT_HOME, user_label=os.environ.get("IHMT_USER_NAME", "User"))
+            stored = sum(report.fragments for report in capture.capture_all())
+            if stored:
+                logger.info("captured %s new conversation fragment(s)", stored)
+        except Exception as exc:  # noqa: BLE001 - capture must never take the server down
+            logger.warning("conversation capture failed: %s", exc)
+
+    threading.Thread(target=sweep, name="ihmt-capture", daemon=True).start()
+
+
 # ----------------------------------------------------------------------- main
 def main(argv: Optional[List[str]] = None) -> int:
     """Start the server on stdio."""
@@ -811,6 +834,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         sys.stderr.write(__doc__ or "")
         return 0
     logger.info("serving IHMT memory from %s", IHMT_HOME)
+    _capture_in_background()
     server.run(transport="stdio")
     return 0
 

@@ -454,7 +454,7 @@ We deliberately do **not** tell Claude to always use the project tools (`project
 | Path | What it is | Safe to delete? |
 |---|---|---|
 | `$IHMT_HOME/ihmt_memory/` | **your long-term memory** | **No** — this is the memory itself |
-| `$IHMT_HOME/ihmt_conversations/` | your past Claude Code sessions, if you turned capture on ([5.6](#56-keep-every-conversation-optional)) | No — the text is kept nowhere else in this form; it can be rebuilt from `~/.claude/projects` while those transcripts exist |
+| `$IHMT_HOME/ihmt_conversations/` | your past sessions in Claude Code, Codex and opencode ([5.8](#58-keep-every-conversation-on-by-default)) | No — the text is kept nowhere else in this form; it can be rebuilt while the agents keep their own session files |
 | `$IHMT_HOME/ihmt_projects/` (or `$IHMT_PROJECTS_DIR`) | per-project code indexes used by `project_map`/`find_code` | Yes — they are caches and rebuild on the next call |
 | session notes (`note`/`recall`) | kept in the server process | They vanish when the session ends |
 
@@ -667,42 +667,60 @@ answer Helix. You can also do it inside the opencode interface: just type `openc
 
 ---
 
-### 5.6 Keep every conversation (optional)
+### 5.8 Keep every conversation (on by default)
 
-`save_memory` stores what the agent decides is worth a note. To also keep **what was said and done in
-every session**, let Claude Code's hooks run `capture`. It reads the session transcript and stores
-your messages, Claude's replies and one line per action (the command run, the file edited) — not the
-tool output, images or reasoning, which are over 99 % of a transcript. Anything that looks like a key
-or a password is replaced with `[REDACTED]` first.
+`save_memory` stores what the agent decides is worth a note. IHMT also keeps **what was said and done
+in every session**, of every agent it knows how to read:
+
+| Agent | Where it reads the sessions |
+|---|---|
+| Claude Code | `~/.claude/projects/*/*.jsonl` (or `$CLAUDE_CONFIG_DIR`) |
+| Codex (CLI and the ChatGPT app) | `~/.codex/sessions/**/rollout-*.jsonl` (or `$CODEX_HOME`) |
+| opencode | `~/.local/share/opencode/opencode.db` (or `$OPENCODE_DATA_DIR`) |
+
+What matters is the agent application, not the model inside it: a session run in opencode with a
+Meta, DeepSeek or OpenAI model is an opencode session. An agent that is not in the table still gets
+the whole memory (`search_memory`, `save_memory` and the rest work in any MCP client); only its
+conversations are not captured, until a reader for its session files is added to
+`ihmt/transcripts.py`.
+
+**Nothing to install.** Every agent starts the IHMT server when a session begins, and the server uses
+that moment to store, in the background, whatever earlier sessions left behind. So a conversation is
+captured when the *next* session starts, in any agent. It keeps your messages, the agent's replies and
+one line per action (the command run, the file edited) — not the tool output, images or reasoning,
+which are over 99 % of a transcript. Anything that looks like a key or a password is replaced with
+`[REDACTED]` first. Everything stays on your disk.
 
 Conversations live in their own tree (`$IHMT_HOME/ihmt_conversations`), so they never compete with
 your notes: `search_memory` only looks there with `scope="conversations"`, optionally narrowed with
-`project="folder-name"`.
+`project="folder-name"` — across agents, so what you did in Codex is found from Claude Code.
 
-Add this to `~/.claude/settings.json` (adapt the three paths):
+| Setting (in the server's `env`) | Effect |
+|---|---|
+| `IHMT_CAPTURE=0` | do not capture conversations |
+| `IHMT_USER_NAME=Ana` | the name written before your turns (default `User`) |
+
+Capture is incremental — a state file remembers how far each session was read — so it never
+duplicates. You can also run it by hand, for instance to see what the first run will import:
+
+```bash
+python main.py --path "$IHMT_HOME" capture --all --dry-run   # what it would store
+python main.py --path "$IHMT_HOME" capture --all             # uvx ihmt-memory capture --all, from PyPI
+```
+
+**Capture at the end of a session too (Claude Code only).** To store a session the moment it closes or
+is compacted, instead of when the next one starts, add hooks to `~/.claude/settings.json`:
 
 ```json
 {
   "hooks": {
-    "SessionEnd":   [{"hooks": [{"type": "command", "command": "IHMT_HOME=/path/to/memory /path/to/IHMT/.venv/bin/python /path/to/IHMT/main.py capture --hook"}]}],
-    "PreCompact":   [{"hooks": [{"type": "command", "command": "IHMT_HOME=/path/to/memory /path/to/IHMT/.venv/bin/python /path/to/IHMT/main.py capture --hook"}]}],
-    "SessionStart": [{"hooks": [{"type": "command", "command": "IHMT_HOME=/path/to/memory /path/to/IHMT/.venv/bin/python /path/to/IHMT/main.py capture --all --detach"}]}]
+    "SessionEnd": [{"hooks": [{"type": "command", "command": "IHMT_HOME=/path/to/memory /path/to/IHMT/.venv/bin/python /path/to/IHMT/main.py capture --hook"}]}],
+    "PreCompact": [{"hooks": [{"type": "command", "command": "IHMT_HOME=/path/to/memory /path/to/IHMT/.venv/bin/python /path/to/IHMT/main.py capture --hook"}]}]
   }
 }
 ```
 
-Installed from PyPI instead of a clone? The command is `IHMT_HOME=… uvx ihmt-memory capture --hook`
-(and `capture --all --detach`); without `IHMT_HOME` it uses `~/.ihmt`, like the server.
-
-The hooks print nothing (so they cost no tokens) and return at once; the work runs in the background.
-`SessionStart` sweeps every transcript, which picks up sessions that ended without running their
-hook. Capture is incremental — a state file remembers how far each transcript was read — so running
-it twice never duplicates. To import the sessions you already have:
-
-```bash
-python main.py --path "$IHMT_HOME" capture --all --dry-run   # what it would store
-python main.py --path "$IHMT_HOME" capture --all
-```
+They print nothing, so they cost no tokens, and return at once.
 
 ## 6. Using it day to day with Claude Code
 

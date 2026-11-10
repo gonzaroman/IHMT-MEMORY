@@ -453,7 +453,10 @@ class McpProtocolTests(unittest.TestCase):
             params = StdioServerParameters(
                 command=sys.executable,
                 args=[str(PROJECT_ROOT / "mcp_server.py")],
-                env={**os.environ, "IHMT_HOME": home},
+                # The server sweeps the agents' sessions when it starts: point it at
+                # empty folders, never at the real ones of whoever runs the tests.
+                env={**os.environ, "IHMT_HOME": home, "CLAUDE_CONFIG_DIR": home, "CODEX_HOME": home,
+                     "OPENCODE_DATA_DIR": home},
             )
             async with stdio_client(params) as (read, write):
                 async with ClientSession(read, write) as session:

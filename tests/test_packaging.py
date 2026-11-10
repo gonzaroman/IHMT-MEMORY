@@ -83,7 +83,7 @@ class LauncherTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run(
                 [sys.executable, str(PROJECT_ROOT / "ihmt_launcher.py"), "capture", "--all", "--dry-run",
-                 "--claude-dir", tmp],
+                 "--claude-dir", tmp, "--codex-dir", tmp, "--opencode-dir", tmp],
                 capture_output=True,
                 text=True,
                 timeout=30,

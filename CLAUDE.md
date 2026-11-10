@@ -99,12 +99,16 @@ group pending leaves by timestamp: without it, a branch mixes methods of unrelat
 goes blind. Bulk writes go through `MemoryStore.batch()`, which writes the catalog once on exit instead
 of once per leaf.
 
-**Conversations are a third kind of store.** `ihmt/transcripts.py` (`main.py capture`, run from Claude
-Code session hooks) keeps the text and one line per action of every session in
+**Conversations are a third kind of store.** `ihmt/transcripts.py` keeps the text and one line per
+action of every agent session (Claude Code and Codex JSON lines, opencode's SQLite) in
 `$IHMT_HOME/ihmt_conversations`, never in the curated memory: `search_memory` reaches it only with
-`scope="conversations"`. It is incremental by byte offset (`capture.json`), redacts credentials before
-writing, and ingests with fact extraction off and `consolidate()` rather than `flush()`. A `--hook`
-run must stay silent and exit 0 whatever happens — hook output can land in the model's context.
+`scope="conversations"`. `mcp_server.main()` sweeps in a daemon thread at startup (`IHMT_CAPTURE=0`
+disables it) — the one trigger every agent has; `main.py capture` and Claude Code hooks are extras. It
+is incremental (`capture.json`: byte offsets, or message times for a database), redacts credentials
+before writing, and ingests with fact extraction off and `consolidate()` rather than `flush()`. State
+is saved only after a transcript's catalog batch closes, so a killed sweep replays instead of losing.
+A `--hook` run must stay silent and exit 0 whatever happens. Tests must point every agent's directory
+at a sandbox (`roots=` or the environment variables): a sweep reads the real home otherwise.
 
 In `mcp_server.py`, **stdout is the JSON-RPC channel**: log to stderr, never `print()`.
 
