@@ -420,41 +420,29 @@ adapt it (it is also in the repository as
 ```markdown
 # Memory: use IHMT
 
-I have **IHMT** installed, a long-term memory MCP server available in all my projects with the tools
-`search_memory` and `save_memory`. It is my main memory.
+**IHMT** (MCP tools `search_memory`, `save_memory`, `mark_outdated`) is my long-term memory, in every
+project.
 
-## Search before answering
+**Search before answering** whenever the answer depends on something not in this conversation: my
+setup, past decisions and why, people and projects I name, how I like to work, "like last time". Use
+several distinctive words, and pass `also=[...]` with the same question in another language or
+wording. Not for general knowledge or what the code already says. If the notes have nothing, try
+`scope="conversations"` (my past sessions) before saying you do not know — and never guess.
 
-Call `search_memory` **before** answering when the answer depends on something that is not in this
-conversation: my setup and tools, past decisions and their reasons, people and projects I mention by
-name, how I like to work, or anything that implies you should already know ("like last time").
+- `AMBIGUOUS`: do not pick one — ask me, or call again with `clue`.
+- `OUTDATED:`: always tell me what changed; never treat the old version as current.
+- `NOT FOUND`: say you do not have it; the entries it lists are stray matches.
 
-Search with several distinctive words, not a bare name. Do not search for things you can read from
-the project's code or for general knowledge. If nothing is found, say so instead of guessing.
+**Save what lasts** with `save_memory`, once it is decided: decisions and why, my setup, how I want
+you to work, people, projects, procedures, and above all corrections — pass `replaces` with a few
+words describing the old memory ("RainDesktop version 1.3") so it is flagged OUTDATED; if several
+candidates are listed, pick with `mark_outdated`. "Remember this" means `save_memory`.
 
-**`AMBIGUOUS`** — several memories fit equally well. Do not pick one: ask me which, or call again
-with `clue` set to a distinguishing detail.
+Write entries that stand alone six months from now, and **start with the date** when the fact belongs
+to one: "2026-09-10: prefers stdlib unittest to avoid adding dependencies".
 
-**`OUTDATED:`** — what you found was updated later. Always tell me; never treat as current something
-I have since changed.
-
-## Save what lasts
-
-Call `save_memory` when I say something durable: decisions and why, how my environment is set up, how
-I want you to work, people and projects, code or procedures I want to keep, and above all
-**corrections** — when something changes, save the new version and pass `replaces` with a few words
-describing the old memory ("RainDesktop version 1.3"). IHMT flags the old one as OUTDATED and answers
-with the new one from then on. If it lists several candidates instead, pick the right one with
-`mark_outdated`.
-
-When I say "remember this" or "save this", that is `save_memory`.
-
-Write entries that make sense on their own six months from now. "Prefers pytest" is not enough;
-"2026-09-10: prefers stdlib unittest to avoid adding dependencies" is. **If the fact belongs to a
-specific date, start with it** — that is what makes recency and the timeline work.
-
-**Never save** passwords, keys or tokens; passing chatter; anything already in the code or the
-repository history; or sensitive personal data I did not ask you to keep. When in doubt, ask me.
+**Never save** passwords, keys or tokens, passing chatter, what the repository already records, or
+sensitive personal data I did not ask you to keep. When in doubt, ask me.
 ```
 
 We deliberately do **not** tell Claude to always use the project tools (`project_map`, `find_code`,
@@ -466,6 +454,7 @@ We deliberately do **not** tell Claude to always use the project tools (`project
 | Path | What it is | Safe to delete? |
 |---|---|---|
 | `$IHMT_HOME/ihmt_memory/` | **your long-term memory** | **No** — this is the memory itself |
+| `$IHMT_HOME/ihmt_conversations/` | your past Claude Code sessions, if you turned capture on ([5.6](#56-keep-every-conversation-optional)) | No — the text is kept nowhere else in this form; it can be rebuilt from `~/.claude/projects` while those transcripts exist |
 | `$IHMT_HOME/ihmt_projects/` (or `$IHMT_PROJECTS_DIR`) | per-project code indexes used by `project_map`/`find_code` | Yes — they are caches and rebuild on the next call |
 | session notes (`note`/`recall`) | kept in the server process | They vanish when the session ends |
 
@@ -678,6 +667,43 @@ answer Helix. You can also do it inside the opencode interface: just type `openc
 
 ---
 
+### 5.6 Keep every conversation (optional)
+
+`save_memory` stores what the agent decides is worth a note. To also keep **what was said and done in
+every session**, let Claude Code's hooks run `capture`. It reads the session transcript and stores
+your messages, Claude's replies and one line per action (the command run, the file edited) — not the
+tool output, images or reasoning, which are over 99 % of a transcript. Anything that looks like a key
+or a password is replaced with `[REDACTED]` first.
+
+Conversations live in their own tree (`$IHMT_HOME/ihmt_conversations`), so they never compete with
+your notes: `search_memory` only looks there with `scope="conversations"`, optionally narrowed with
+`project="folder-name"`.
+
+Add this to `~/.claude/settings.json` (adapt the three paths):
+
+```json
+{
+  "hooks": {
+    "SessionEnd":   [{"hooks": [{"type": "command", "command": "IHMT_HOME=/path/to/memory /path/to/IHMT/.venv/bin/python /path/to/IHMT/main.py capture --hook"}]}],
+    "PreCompact":   [{"hooks": [{"type": "command", "command": "IHMT_HOME=/path/to/memory /path/to/IHMT/.venv/bin/python /path/to/IHMT/main.py capture --hook"}]}],
+    "SessionStart": [{"hooks": [{"type": "command", "command": "IHMT_HOME=/path/to/memory /path/to/IHMT/.venv/bin/python /path/to/IHMT/main.py capture --all --detach"}]}]
+  }
+}
+```
+
+Installed from PyPI instead of a clone? The command is `IHMT_HOME=… uvx ihmt-memory capture --hook`
+(and `capture --all --detach`); without `IHMT_HOME` it uses `~/.ihmt`, like the server.
+
+The hooks print nothing (so they cost no tokens) and return at once; the work runs in the background.
+`SessionStart` sweeps every transcript, which picks up sessions that ended without running their
+hook. Capture is incremental — a state file remembers how far each transcript was read — so running
+it twice never duplicates. To import the sessions you already have:
+
+```bash
+python main.py --path "$IHMT_HOME" capture --all --dry-run   # what it would store
+python main.py --path "$IHMT_HOME" capture --all
+```
+
 ## 6. Using it day to day with Claude Code
 
 Once connected, you just talk. Claude decides when to search and when to save (Codex and opencode
@@ -698,8 +724,7 @@ save_memory("2026-02-03: I live in Valencia, near the Turia gardens.")
 ```
 
 ```
-Saved 1 memory entry (~13 tokens) as GENERIC in domain 'general'.
-Memory now holds 2 entries across 1 domains (0 summary nodes, depth 0).
+Saved 1 memory entry as GENERIC in domain 'general' (id L-general-0000-5f1c2a9b7e).
 Extracted 1 dated fact(s) into the timeline.
 
 This updates something remembered earlier — tell the user:
@@ -723,8 +748,7 @@ save_memory("2026-08-20: Staging now runs PostgreSQL 17; 15 is gone.",
 ```
 
 ```
-Saved 1 memory entry (~13 tokens) as GENERIC in domain 'general'.
-Memory now holds 2 entries across 2 domains (0 summary nodes, depth 0).
+Saved 1 memory entry as GENERIC in domain 'general' (id L-general-0000-8d03e61c42).
 
 This corrects an earlier memory, now flagged OUTDATED — tell the user:
   On 2026-03-02 this was saved: 'The staging database runs PostgreSQL 15 on a shared cluster', but on 2026-08-20 it was corrected: 'Staging now runs PostgreSQL 17; 15 is gone'.

@@ -33,7 +33,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from .api import IHMT
 from .models import IHMTError
-from .semantic_navigator import SCOPES, looks_like_code
+from .semantic_navigator import SCOPES, looks_like_code, looks_like_test
 from .textutils import estimate_tokens, short_hash, slugify
 
 #: Text files worth indexing. Anything else (binaries, lock files, media) is skipped.
@@ -268,7 +268,15 @@ class ProjectIndex:
         return report
 
     # --------------------------------------------------------------------- read
-    def map(self, *, detail: str = "symbols", subpath: str = "", max_lines: int = 400) -> str:
+    def map(
+        self,
+        *,
+        detail: str = "symbols",
+        subpath: str = "",
+        max_lines: int = 400,
+        scope: str = "all",
+        max_tokens: int = 0,
+    ) -> str:
         """A compact map of the project, built from the manifest (no leaf is opened).
 
         Args:
@@ -276,23 +284,32 @@ class ProjectIndex:
                 symbols of each file with their line ranges).
             subpath: Restrict the map to a directory, relative to the root.
             max_lines: Cap on the number of lines returned.
+            scope: ``"all"``, ``"main"`` (leave test sources out) or ``"test"``.
+            max_tokens: Budget for the map; 0 for no budget. When the map would
+                exceed it, the directories whose symbols cost most are shown as
+                plain file lists, then as one line each — the map always comes
+                back whole and says where to zoom in.
         """
         if detail not in ("files", "symbols"):
             raise ValueError('detail must be "files" or "symbols"')
+        if scope not in SCOPES:
+            raise ValueError(f"scope must be one of {SCOPES}, got {scope!r}")
         manifest = self._load_manifest()
         prefix = subpath.strip("/")
-        lines: List[str] = []
         total_tokens = 0
-        current_dir = None
+        hidden = 0
+        # directory -> [(file line, symbols suffix, file tokens)]
+        directories: Dict[str, List[Tuple[str, str, int]]] = {}
         for relative, info in sorted(manifest.items()):
             if prefix and not relative.startswith(prefix):
                 continue
-            total_tokens += int(info.get("tokens", 0))
+            if scope != "all" and looks_like_test(relative) != (scope == "test"):
+                hidden += 1
+                continue
+            tokens = int(info.get("tokens", 0))
+            total_tokens += tokens
             directory, _, name = relative.rpartition("/")
-            if directory != current_dir:
-                lines.append(f"{directory or '.'}/")
-                current_dir = directory
-            line = f"  {name} ~{info.get('tokens', 0)}"
+            suffix = ""
             if detail == "symbols" and looks_like_code(relative):
                 # Only source code has meaningful symbols; for HTML, Markdown or
                 # XML the "blocks" are markup fragments that cost tokens and
@@ -304,16 +321,71 @@ class ProjectIndex:
                     if self._worth_listing(leaf.get("title", ""))
                 ]
                 if symbols:
-                    line += ": " + ", ".join(symbols)
-            lines.append(line)
+                    suffix = ": " + ", ".join(symbols)
+            directories.setdefault(directory, []).append((f"  {name} ~{tokens}", suffix, tokens))
+
+        # ---- fit the budget: drop the costliest detail first --------------
+        plain: set = set()  # directories listed without symbols
+        folded: set = set()  # directories shown as a single line
+        if max_tokens > 0:
+
+            def cost(directory: str) -> int:
+                if directory in folded:
+                    return 12
+                files = directories[directory]
+                text = "".join(line + ("" if directory in plain else suffix) for line, suffix, _ in files)
+                return estimate_tokens(directory + text) + len(files) + 4
+
+            def symbols_cost(directory: str) -> int:
+                return estimate_tokens("".join(suffix for _, suffix, _ in directories[directory]))
+
+            spent = sum(cost(d) for d in directories)
+            while spent > max_tokens:
+                detailed = [d for d in directories if d not in plain and symbols_cost(d)]
+                foldable = [d for d in directories if d not in folded and len(directories) > 1]
+                if detailed:
+                    target = max(detailed, key=lambda d: (symbols_cost(d), d))
+                    plain.add(target)
+                elif foldable:
+                    target = max(foldable, key=lambda d: (cost(d), d))
+                    folded.add(target)
+                else:
+                    break
+                spent = sum(cost(d) for d in directories)
+
+        lines: List[str] = []
+        truncated = False
+        for directory, files in directories.items():
+            label = f"{directory or '.'}/"
+            if directory in folded:
+                lines.append(f"{label} ({len(files)} files, ~{sum(t for _, _, t in files)} tokens)")
+                continue
+            lines.append(label)
+            for line, suffix, _ in files:
+                lines.append(line if directory in plain else line + suffix)
             if len(lines) >= max_lines:
-                lines.append(f"[... map truncated at {max_lines} lines; pass subpath to zoom in]")
+                truncated = True
                 break
+        if truncated:
+            lines = lines[:max_lines] + [f"[... map truncated at {max_lines} lines; pass subpath to zoom in]"]
+
+        shown = sum(len(files) for files in directories.values())
         header = (
-            f"{self.root.name}: {len(manifest)} files, ~{total_tokens} tokens if read whole "
+            f"{self.root.name}: {shown} files, ~{total_tokens} tokens if read whole "
             "(format: file ~tokens: symbol first-last line)"
         )
-        return "\n".join([header] + lines)
+        notes: List[str] = []
+        if hidden:
+            kind, other = ("test", "test") if scope == "main" else ("non-test", "main")
+            notes.append(f'[{hidden} {kind} files left out; scope="{other}" or "all" shows them]')
+        if plain or folded:
+            zoom = sorted(plain | folded, key=lambda d: d or ".")
+            notes.append(
+                "[over budget — symbols left out for: "
+                + ", ".join(f"{d or '.'}/" for d in zoom)
+                + "; pass subpath to see them]"
+            )
+        return "\n".join([header] + lines + notes)
 
     @staticmethod
     def _worth_listing(title: str) -> bool:

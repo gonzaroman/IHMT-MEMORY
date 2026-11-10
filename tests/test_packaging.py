@@ -73,6 +73,25 @@ class LauncherTests(unittest.TestCase):
         template = (PROJECT_ROOT / "templates" / "memory-instructions.md").read_bytes()
         self.assertEqual(result.stdout.replace(b"\r\n", b"\n"), template.replace(b"\r\n", b"\n"))
 
+    def test_capture_is_reachable_without_main_py(self) -> None:
+        """The wheel ships no main.py, so the hooks of a PyPI install call the launcher."""
+        import os
+        import subprocess
+        import sys
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run(
+                [sys.executable, str(PROJECT_ROOT / "ihmt_launcher.py"), "capture", "--all", "--dry-run",
+                 "--claude-dir", tmp],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                env={**os.environ, "IHMT_HOME": tmp},
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("would store 0 fragments", result.stdout)
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

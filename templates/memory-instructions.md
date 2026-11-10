@@ -1,37 +1,25 @@
 # Memory: use IHMT
 
-I have **IHMT** installed, a long-term memory MCP server available in all my projects with the tools
-`search_memory` and `save_memory`. It is my main memory.
+**IHMT** (MCP tools `search_memory`, `save_memory`, `mark_outdated`) is my long-term memory, in every
+project.
 
-## Search before answering
+**Search before answering** whenever the answer depends on something not in this conversation: my
+setup, past decisions and why, people and projects I name, how I like to work, "like last time". Use
+several distinctive words, and pass `also=[...]` with the same question in another language or
+wording. Not for general knowledge or what the code already says. If the notes have nothing, try
+`scope="conversations"` (my past sessions) before saying you do not know — and never guess.
 
-Call `search_memory` **before** answering when the answer depends on something that is not in this
-conversation: my setup and tools, past decisions and their reasons, people and projects I mention by
-name, how I like to work, or anything that implies you should already know ("like last time").
+- `AMBIGUOUS`: do not pick one — ask me, or call again with `clue`.
+- `OUTDATED:`: always tell me what changed; never treat the old version as current.
+- `NOT FOUND`: say you do not have it; the entries it lists are stray matches.
 
-Search with several distinctive words, not a bare name. Do not search for things you can read from
-the project's code or for general knowledge. If nothing is found, say so instead of guessing.
+**Save what lasts** with `save_memory`, once it is decided: decisions and why, my setup, how I want
+you to work, people, projects, procedures, and above all corrections — pass `replaces` with a few
+words describing the old memory ("RainDesktop version 1.3") so it is flagged OUTDATED; if several
+candidates are listed, pick with `mark_outdated`. "Remember this" means `save_memory`.
 
-**`AMBIGUOUS`** — several memories fit equally well. Do not pick one: ask me which, or call again
-with `clue` set to a distinguishing detail.
+Write entries that stand alone six months from now, and **start with the date** when the fact belongs
+to one: "2026-09-10: prefers stdlib unittest to avoid adding dependencies".
 
-**`OUTDATED:`** — what you found was updated later. Always tell me; never treat as current something
-I have since changed.
-
-## Save what lasts
-
-Call `save_memory` when I say something durable: decisions and why, how my environment is set up, how
-I want you to work, people and projects, code or procedures I want to keep, and above all
-**corrections** — when something changes, save the new version and pass `replaces` with a few words
-describing the old memory ("RainDesktop version 1.3"). IHMT flags the old one as OUTDATED and answers
-with the new one from then on. If it lists several candidates instead, pick the right one with
-`mark_outdated`.
-
-When I say "remember this" or "save this", that is `save_memory`.
-
-Write entries that make sense on their own six months from now. "Prefers pytest" is not enough;
-"2026-09-10: prefers stdlib unittest to avoid adding dependencies" is. **If the fact belongs to a
-specific date, start with it** — that is what makes recency and the timeline work.
-
-**Never save** passwords, keys or tokens; passing chatter; anything already in the code or the
-repository history; or sensitive personal data I did not ask you to keep. When in doubt, ask me.
+**Never save** passwords, keys or tokens, passing chatter, what the repository already records, or
+sensitive personal data I did not ask you to keep. When in doubt, ask me.

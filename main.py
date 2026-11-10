@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
@@ -347,6 +348,13 @@ def cmd_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_capture(args: argparse.Namespace) -> int:
+    """Store what is new in Claude Code transcripts (text and actions, no tool output)."""
+    from ihmt.transcripts import run_capture
+
+    return run_capture(args, args.path if args.path_given else os.environ.get("IHMT_HOME", args.path))
+
+
 # --------------------------------------------------------------------- parser
 def build_parser() -> argparse.ArgumentParser:
     """Assemble the argument parser."""
@@ -419,6 +427,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_rebuild = add("rebuild", "rebuild catalog, timeline and trunk from disk")
     p_rebuild.set_defaults(func=cmd_rebuild)
 
+    p_capture = add("capture", "store Claude Code conversations (text and actions) in their own tree")
+    from ihmt.transcripts import add_capture_arguments
+
+    add_capture_arguments(p_capture)
+    p_capture.set_defaults(func=cmd_capture)
+
     p_demo = add("demo", "end-to-end walkthrough")
     p_demo.set_defaults(func=cmd_demo)
     return parser
@@ -429,6 +443,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     # The demo writes to its own workspace so it never disturbs a real store.
+    args.path_given = args.path is not None
     if args.path is None:
         args.path = "./demo_workspace" if args.command == "demo" else "."
     try:

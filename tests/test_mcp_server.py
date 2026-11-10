@@ -97,15 +97,16 @@ class McpToolTests(unittest.TestCase):
             with self.subTest(call=n):
                 self.assertNotIn("unavailable", output)
                 if n % 2 == 0:
-                    self.assertIn("Memory now holds", output)
+                    self.assertIn("Saved 1 memory", output)
 
     # ------------------------------------------------------------ save_memory
-    def test_saving_reports_classification_and_growth(self) -> None:
+    def test_saving_reports_classification_and_the_new_id(self) -> None:
         output = self.srv.save_memory(
             "public class Foo {\n    void bar() {\n        return;\n    }\n}\n"
         )
         self.assertIn("CODE", output)
-        self.assertIn("Memory now holds", output)
+        self.assertRegex(output, r"\(id L-[\w.-]+\)")
+        self.assertEqual(len(output.splitlines()), 1, "a plain save answers in one line")
 
     def test_an_explicit_domain_and_type_are_honoured(self) -> None:
         self.srv.save_memory("Cualquier texto.", domain="mi.proyecto", content_type="narrative")
@@ -295,6 +296,74 @@ class McpTokenSavingToolTests(unittest.TestCase):
 
     def test_an_unknown_detail_is_refused(self) -> None:
         self.assertIn("detail must be", self.srv.search_memory("algo", detail="huge"))
+
+    # ------------------------------------------- phrasings and date filter
+    def test_another_phrasing_in_the_same_call_finds_what_the_first_misses(self) -> None:
+        self.srv.save_memory("2026-06-18: Migramos a Go y Postgres el backend de facturación.")
+        alone = self.srv.search_memory("billing service rewrite language database")
+        together = self.srv.search_memory(
+            "billing service rewrite language database", also=["migración backend facturación Go Postgres"]
+        )
+
+        self.assertNotIn("Go y Postgres", alone)
+        self.assertIn("Go y Postgres", together)
+
+    def test_since_leaves_out_older_memories(self) -> None:
+        self.srv.save_memory("2026-03-02: La versión publicada de RainDesktop es la 1.2, con panel de lluvia.")
+        self.srv.save_memory("2026-10-05: La versión publicada de RainDesktop es la 1.4, con panel de nieve.")
+
+        recent = self.srv.search_memory("versión publicada RainDesktop", since="2026-10-01")
+        self.assertIn("1.4", recent)
+        self.assertNotIn("1.2", recent)
+        self.assertIn("No memory found", self.srv.search_memory("versión publicada RainDesktop", since="2027-01-01"))
+        self.assertIn("since must be", self.srv.search_memory("versión RainDesktop", since="octubre"))
+
+    # ------------------------------------------------------- conversations
+    def _capture_session(self, project: str, said: str) -> None:
+        import json
+
+        from ihmt.transcripts import ConversationCapture
+
+        transcript = Path(self._tmp.name) / f"{project}.jsonl"
+        records = [
+            {"type": "user", "timestamp": "2026-11-07T10:00:00Z", "sessionId": f"{project}-session",
+             "cwd": f"/work/{project}", "message": {"role": "user", "content": said}},
+            {"type": "assistant", "timestamp": "2026-11-07T10:00:05Z", "sessionId": f"{project}-session",
+             "cwd": f"/work/{project}", "message": {"role": "assistant", "content": [
+                 {"type": "text", "text": "Hecho, lo dejo anotado en el plan."}]}},
+        ]
+        transcript.write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+        ConversationCapture(os.environ["IHMT_HOME"]).capture([transcript])
+
+    def test_conversations_are_searched_only_when_asked(self) -> None:
+        self.assertIn("No conversations", self.srv.search_memory("cualquier cosa", scope="conversations"))
+        self._capture_session("web-bolsa", "Cambia el gráfico de velas japonesas por uno de líneas en la portada")
+        self.srv.save_memory("2026-06-18: Migramos a Go y Postgres el backend de facturación.")
+
+        found = self.srv.search_memory("gráfico velas japonesas portada", scope="conversations")
+        self.assertIn("velas japonesas", found)
+        self.assertIn("2026-11-07", found)
+        self.assertNotIn("Cambia el gráfico", self.srv.search_memory("gráfico velas japonesas portada"))
+
+    def test_a_project_narrows_the_conversations(self) -> None:
+        self._capture_session("web-bolsa", "Cambia el gráfico de velas japonesas por uno de líneas")
+        self._capture_session("raindesktop", "Cambia el gráfico de velas japonesas del panel de lluvia")
+
+        only = self.srv.search_memory("gráfico velas japonesas", scope="conversations", project="raindesktop")
+        self.assertIn("panel de lluvia", only)
+        other = self.srv.search_memory("gráfico velas japonesas", scope="conversations", project="nadie")
+        self.assertIn("Nothing like that", other)
+        self.assertIn("scope must be", self.srv.search_memory("algo", scope="todo"))
+        self.assertIn("only applies", self.srv.search_memory("algo", project="web-bolsa"))
+
+    def test_project_map_leaves_tests_out_unless_asked(self) -> None:
+        test_file = self.project / "src" / "test" / "java" / "demo" / "PedidoTest.java"
+        test_file.parent.mkdir(parents=True)
+        test_file.write_text("package demo;\nclass PedidoTest {\n    void confirma() {\n    }\n}\n", encoding="utf-8")
+
+        self.assertNotIn("PedidoTest", self.srv.project_map(str(self.project)))
+        self.assertIn("1 test files left out", self.srv.project_map(str(self.project)))
+        self.assertIn("PedidoTest", self.srv.project_map(str(self.project), scope="all"))
 
     # ------------------------------------------------------- project tools
     def test_project_map_lists_files_and_symbols(self) -> None:

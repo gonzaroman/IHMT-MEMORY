@@ -7,7 +7,9 @@ Three families of tools are published over stdio:
   ``search_memory(query, clue, detail)`` walks the tree via
   :class:`SemanticNavigator` and never guesses on an ambiguous query;
   ``save_memory(content, domain, content_type)`` stores new knowledge through
-  :class:`UniversalIngestor`.
+  :class:`UniversalIngestor`. With ``scope="conversations"`` the search walks a
+  second tree instead: the past Claude Code sessions that ``main.py capture``
+  (run from session hooks) stores under ``$IHMT_HOME/ihmt_conversations``.
 * **Project index** (saves tokens *within* a session): ``project_map`` returns a
   compact map of a source tree, ``find_code`` returns just the symbol that
   answers a question (``file:lines`` + code), and ``read_file`` answers
@@ -70,7 +72,8 @@ from ihmt import IHMT  # noqa: E402  (path setup must precede the import)
 from ihmt.models import DataType, IHMTError  # noqa: E402
 from ihmt.project_index import ProjectIndex  # noqa: E402
 from ihmt.semantic_navigator import SCOPES, SearchResponse  # noqa: E402
-from ihmt.textutils import content_terms, estimate_tokens  # noqa: E402
+from ihmt.textutils import content_terms, estimate_tokens, slugify  # noqa: E402
+from ihmt.transcripts import CONVERSATIONS_DIRNAME, SOURCE_PREFIX  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format="ihmt-mcp: %(message)s")
 logger = logging.getLogger("ihmt.mcp")
@@ -86,33 +89,34 @@ MAX_RESULTS = 3
 FULL_TEXT_LIMIT = 6000
 EXCERPT_LIMIT = 400
 MAX_READ_BYTES = 512 * 1024
+#: A conversation fragment is context, not a curated note: show less of it.
+CONVERSATION_TEXT_LIMIT = 3000
+#: Budget of a project map; beyond it the costliest detail is dropped first.
+MAP_TOKEN_BUDGET = 3000
+#: Alternative phrasings accepted by one search call.
+MAX_FORMULATIONS = 4
 DIGEST_CHAR_LIMIT = 2400
 
 SERVER_INSTRUCTIONS = """\
-IHMT is a hierarchical memory tree on the local filesystem.
-
-Long-term memory: `search_memory` before answering anything that depends on
-earlier sessions (setup, decisions, preferences, people); `save_memory` for
-durable facts and decisions, with `replaces` when a save corrects something
-saved earlier. Never guess on AMBIGUOUS (retry with `clue`), say so on NOT
-FOUND, and always relay OUTDATED notices.
-
-Saving tokens inside a session: orient yourself in a codebase with
-`project_map` instead of listing and reading files; use `find_code` to get just
-the method that answers a question; re-read files with `read_file`, which
-answers "unchanged" or a diff. Keep what you learn with `note`/`recall`, and
-pass long logs through `digest_output`.
+IHMT: the user's long-term memory, plus tools that save tokens in a session.
+`search_memory` before answering anything that depends on earlier sessions
+(scope="conversations" searches the past sessions themselves); `save_memory`
+for durable facts, with `replaces` when it corrects one. Never guess on
+AMBIGUOUS, say so on NOT FOUND, always relay OUTDATED.
+In a codebase prefer `project_map`, `find_code` and `read_file` (answers
+"unchanged" or a diff) to listing and re-reading files.
 """
 
 server = _Server(
     name="ihmt-memory",
     instructions=SERVER_INSTRUCTIONS,
-    version="1.2.1",
+    version="1.3.0",
 )
 
 _memory: Optional[IHMT] = None
 _projects: Dict[str, ProjectIndex] = {}
 _delivered: Dict[str, Tuple[str, str]] = {}  # resolved path -> (sha256, text) handed out this session
+_conversations: Optional[IHMT] = None
 _session: Optional[IHMT] = None
 _session_dir: Optional[tempfile.TemporaryDirectory] = None
 _session_counter = 0
@@ -154,6 +158,23 @@ def get_memory() -> IHMT:
         _memory.store.reload()
         _memory.resolver.reload()
     return _memory
+
+
+def get_conversations() -> Optional[IHMT]:
+    """The tree of captured sessions, or ``None`` while nothing has been captured.
+
+    Written by ``main.py capture`` from another process, so it is reloaded on
+    every call like the long-term store.
+    """
+    global _conversations
+    base = IHMT_HOME / CONVERSATIONS_DIRNAME
+    if _conversations is None:
+        if not (base / "ihmt_memory" / "root.json").exists():
+            return None
+        _conversations = IHMT(base)
+    else:
+        _conversations.store.reload()
+    return _conversations
 
 
 def get_project(path: str) -> ProjectIndex:
@@ -213,7 +234,7 @@ def _format_results(response: SearchResponse) -> str:
     return "\n".join(lines)
 
 
-def _format_compact(response: SearchResponse) -> str:
+def _format_compact(response: SearchResponse, limit: int = FULL_TEXT_LIMIT) -> str:
     """Render a search with no bookkeeping: the best memory, and one line per rival.
 
     Dates and OUTDATED notices are kept — they change the meaning of an answer.
@@ -221,8 +242,8 @@ def _format_compact(response: SearchResponse) -> str:
     """
     best = response.results[0]
     body = (best.content or best.excerpt).rstrip()
-    if len(body) > FULL_TEXT_LIMIT:
-        body = body[:FULL_TEXT_LIMIT] + "\n[... truncated; narrow the query for the rest]"
+    if len(body) > limit:
+        body = body[:limit] + "\n[... truncated; narrow the query for the rest]"
     lines = [f"[{best.domain}] {best.timestamp[:10] or 'undated'} (confidence {response.confidence:.2f})"]
     lines += [f"OUTDATED: {notice}" for notice in best.notices]
     lines.append(body)
@@ -278,26 +299,70 @@ def _format_weak(response: SearchResponse, empty_hint: str) -> str:
     return "\n".join(lines)
 
 
-def _search(memory: IHMT, query: str, clue: Optional[str], detail: str, empty_hint: str) -> str:
-    """Shared body of ``search_memory`` and ``recall``."""
+def _outcome(response: SearchResponse) -> int:
+    """How useful a response is: 3 an answer, 2 a clue request, 1 a weak echo, 0 nothing."""
+    if not response.results:
+        return 0
+    if response.weak:
+        return 1
+    return 2 if response.needs_clue else 3
+
+
+def _search(
+    memory: IHMT,
+    query: str,
+    clue: Optional[str],
+    detail: str,
+    empty_hint: str,
+    *,
+    also: Optional[List[str]] = None,
+    since: str = "",
+    path_prefix: Optional[str] = None,
+    limit: int = FULL_TEXT_LIMIT,
+) -> str:
+    """Shared body of ``search_memory`` and ``recall``.
+
+    ``also`` holds other phrasings of the same question. Matching is lexical, so
+    a Spanish note is invisible to an English query: every phrasing is searched
+    and the most useful response wins — an answer beats a request for a clue,
+    which beats a weak echo. AMBIGUOUS or NOT FOUND is only reported when no
+    phrasing did better.
+    """
     if not query or not query.strip():
         return "Provide a non-empty query."
     if detail not in ("compact", "full"):
         return 'detail must be "compact" or "full".'
-    response = memory.search(query, top_k=MAX_RESULTS, clue=clue)
+    since = (since or "").strip()
+    if since and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", since):
+        return 'since must be a date like "2026-10-01".'
+    phrasings = [query] + [p for p in (also or []) if isinstance(p, str) and p.strip()]
+    responses = [
+        memory.search(p, top_k=MAX_RESULTS, clue=clue, since=since or None, path_prefix=path_prefix)
+        for p in dict.fromkeys(phrasings[:MAX_FORMULATIONS])
+    ]
+    response = max(responses, key=lambda r: (_outcome(r), r.confidence))
     if not response.results:
-        return f'No memory found for "{query}"' + (f' (with clue "{clue}")' if clue else "") + f". {empty_hint}"
+        filters = (f' (with clue "{clue}")' if clue else "") + (f" since {since}" if since else "")
+        return f'No memory found for "{query}"{filters}. {empty_hint}'
     if response.weak:
         return _format_weak(response, empty_hint)
     if response.needs_clue:
         return _format_clue_request(response)
-    return _format_compact(response) if detail == "compact" else _format_results(response)
+    return _format_compact(response, limit) if detail == "compact" else _format_results(response)
 
 
 # ------------------------------------------------------ long-term memory tools
 @server.tool()
 @_one_at_a_time
-def search_memory(query: str, clue: Optional[str] = None, detail: str = "compact") -> str:
+def search_memory(
+    query: str,
+    clue: Optional[str] = None,
+    detail: str = "compact",
+    also: Optional[List[str]] = None,
+    since: str = "",
+    scope: str = "memory",
+    project: str = "",
+) -> str:
     """Search the user's long-term memory (IHMT): decisions, setup, preferences, people, earlier sessions.
 
     Use several distinctive words, not a bare name. Returns the best memory with its date
@@ -308,8 +373,35 @@ def search_memory(query: str, clue: Optional[str] = None, detail: str = "compact
         query: What to look for, in any language.
         clue: Distinguishing detail, only after an AMBIGUOUS reply.
         detail: "compact" (default) or "full" (adds ids, tree paths and excerpts).
+        also: Other phrasings of the same question (another language, synonyms), searched in
+            this same call; matching is by words, so this replaces retrying.
+        since: Only memories dated on or after "YYYY-MM-DD" — for the current state of a topic.
+        scope: "memory" (curated notes, default) or "conversations" (what was said and done
+            in past sessions; use it when the notes have nothing).
+        project: With scope="conversations", only sessions of this project (its folder name).
     """
+    if scope not in ("memory", "conversations"):
+        return 'scope must be "memory" or "conversations".'
     try:
+        if scope == "conversations":
+            conversations = get_conversations()
+            if conversations is None:
+                return "No conversations have been captured yet (see `main.py capture`)."
+            name = slugify(project, fallback="") if project.strip() else ""
+            return _search(
+                conversations,
+                query,
+                clue,
+                detail,
+                "Nothing like that in the captured sessions"
+                + (f' of project "{name}"; try without `project`.' if name else "."),
+                also=also,
+                since=since,
+                path_prefix=f"{SOURCE_PREFIX}{name}/" if name else None,
+                limit=CONVERSATION_TEXT_LIMIT,
+            )
+        if project.strip():
+            return 'project only applies to scope="conversations"; put the project name in the query instead.'
         return _search(
             get_memory(),
             query,
@@ -317,6 +409,8 @@ def search_memory(query: str, clue: Optional[str] = None, detail: str = "compact
             detail,
             "Nothing has been stored about this yet — consider save_memory once the user tells you "
             "something worth keeping.",
+            also=also,
+            since=since,
         )
     except IHMTError as exc:
         return f"Memory unavailable: {exc}"
@@ -375,17 +469,9 @@ def save_memory(content: str, domain: str = "general", content_type: str = "auto
     if not report.chunks:
         return "Nothing to save: the content held no storable text."
 
-    stats = memory.stats()
     lines = [
         f"Saved {report.chunks} memory entr{'y' if report.chunks == 1 else 'ies'} "
-        f"(~{report.tokens} tokens) as {report.data_type.value} in domain '{report.domain}'"
-        + (
-            f" (detection confidence {report.detection.confidence:.2f})."
-            if requested_type is None and report.data_type is not DataType.GENERIC
-            else "."
-        ),
-        f"Memory now holds {stats['leaves']} entries across {len(stats['domains'])} domains "
-        f"({stats['nodes']} summary nodes, depth {stats['depth']}).",
+        f"as {report.data_type.value} in domain '{report.domain}' (id {', '.join(report.leaf_ids)}).",
     ]
     if report.facts:
         lines.append(f"Extracted {report.facts} dated fact(s) into the timeline.")
@@ -509,21 +595,25 @@ def mark_outdated(old_id: str, new_id: str) -> str:
 # ------------------------------------------------------------ project tools
 @server.tool()
 @_one_at_a_time
-def project_map(path: str, detail: str = "files", subpath: str = "") -> str:
+def project_map(path: str, detail: str = "files", subpath: str = "", scope: str = "main") -> str:
     """Compact map of a codebase: files with their size in tokens, optionally their symbols and line ranges.
 
     Call it before exploring a project instead of listing directories and opening files.
     Indexes the project on first use and resyncs changed files by checksum on every call.
+    The map fits a token budget: on a large project it says which directories to zoom into.
 
     Args:
         path: Project root directory (absolute).
         detail: "files" (cheapest) or "symbols" (adds methods/classes with first-last line).
         subpath: Restrict to a directory inside the project, e.g. "src/main".
+        scope: "main" (leave tests out, default), "test" or "all".
     """
     if detail not in ("files", "symbols"):
         return 'detail must be "files" or "symbols".'
+    if scope not in SCOPES:
+        return f"scope must be one of {', '.join(SCOPES)}."
     try:
-        return get_project(path).map(detail=detail, subpath=subpath)
+        return get_project(path).map(detail=detail, subpath=subpath, scope=scope, max_tokens=MAP_TOKEN_BUDGET)
     except IHMTError as exc:
         return f"Cannot index {path}: {exc}"
 

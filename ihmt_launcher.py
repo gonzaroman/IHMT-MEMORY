@@ -3,6 +3,7 @@
 
     uvx ihmt-memory                   # start the MCP server on stdio
     uvx ihmt-memory --instructions    # print the rules to append to CLAUDE.md / AGENTS.md
+    uvx ihmt-memory capture --all     # store Claude Code conversations (see GUIDE.md 5.6)
 
 Installed as a package, ``mcp_server.py`` lives in site-packages, so its default
 ``IHMT_HOME`` (the folder holding the code) would put the memory where the next
@@ -42,6 +43,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         sys.stdout.buffer.write(instructions().encode("utf-8"))
         sys.stdout.flush()
         return 0
+
+    if args and args[0] == "capture":
+        # Stdlib only, and before the server import: a session hook runs this.
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from ihmt.transcripts import cli
+
+        return cli(args[1:], Path.home() / ".ihmt")
 
     # mcp_server reads IHMT_HOME when it is imported, so set the default first.
     os.environ.setdefault("IHMT_HOME", str(Path.home() / ".ihmt"))

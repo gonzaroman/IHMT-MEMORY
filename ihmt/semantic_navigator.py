@@ -308,6 +308,7 @@ class SemanticNavigator:
         scope: str = "all",
         path_prefix: Optional[str] = None,
         include_historical: bool = False,
+        since: Optional[str] = None,
     ) -> SearchResponse:
         """Walk the tree and return the best-matching leaves.
 
@@ -320,6 +321,7 @@ class SemanticNavigator:
             path_prefix: Only leaves whose source starts with this prefix.
             include_historical: Also return leaves demoted to ``HISTORICAL``
                 (earlier versions of a re-ingested file).
+            since: Only leaves dated on or after this ISO date (``"2026-10-01"``).
 
         Filters are evaluated against the in-memory catalog, so they prune
         candidates without opening a single extra file.
@@ -354,7 +356,8 @@ class SemanticNavigator:
             leaves = [
                 self._adjust_for_code(c, flat_terms, scope)
                 for c in ranked
-                if c.ref.kind is NodeKind.LEAF and self._admissible(c.ref, scope, path_prefix, include_historical)
+                if c.ref.kind is NodeKind.LEAF
+                and self._admissible(c.ref, scope, path_prefix, include_historical, since)
             ]
             leaves = sorted(leaves, key=lambda c: (-c.score, c.id))[:keep_leaves]
             nodes = [c for c in ranked if c.ref.kind is NodeKind.NODE][: self.config.beam_width]
@@ -579,14 +582,21 @@ class SemanticNavigator:
         return sorted(candidates, key=lambda c: (-c.score, c.id))
 
     def _admissible(
-        self, ref: ChildRef, scope: str, path_prefix: Optional[str], include_historical: bool
+        self,
+        ref: ChildRef,
+        scope: str,
+        path_prefix: Optional[str],
+        include_historical: bool,
+        since: Optional[str] = None,
     ) -> bool:
         """Apply the search filters to a leaf, using only the catalog."""
         entry = self.store.catalog.entries.get(ref.id)
         if entry is None:
             # Not indexed (stale catalog): only a filter we cannot evaluate excludes it.
-            return scope == "all" and not path_prefix
+            return scope == "all" and not path_prefix and not since
         if not include_historical and entry.status == "HISTORICAL":
+            return False
+        if since and entry.timestamp[:10] < since[:10]:
             return False
         if path_prefix and not entry.source.startswith(path_prefix):
             return False

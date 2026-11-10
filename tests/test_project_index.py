@@ -231,6 +231,31 @@ class ProjectLookupTests(ProjectFixture):
         self.assertEqual(result.hits[0].title, "Pedido.cancelar")
         self.assertNotIn("/v1/", result.hits[0].source)  # the legacy copy loses
 
+    def test_a_map_over_budget_drops_symbols_but_keeps_every_file(self) -> None:
+        whole = self.index.map(detail="symbols")
+        files_only = self.index.map(detail="files")
+        tight = self.index.map(detail="symbols", max_tokens=len(files_only.split("\n", 1)[1]) // 4 + 25)
+        tiny = self.index.map(detail="symbols", max_tokens=10)
+
+        self.assertIn("confirmar", whole)
+        self.assertNotIn("confirmar", tight)
+        self.assertIn("Pedido.java", tight)
+        self.assertIn("over budget", tight)
+        self.assertIn("subpath", tight)
+        self.assertIn("(1 files, ~", tiny, "past the file lists, directories fold into one line each")
+        self.assertNotIn("over budget", self.index.map(detail="symbols", max_tokens=100_000))
+        self.assertEqual(whole, self.index.map(detail="symbols", max_tokens=0))
+
+    def test_the_map_scope_separates_tests_from_product_code(self) -> None:
+        everything = self.index.map(detail="files")
+        main = self.index.map(detail="files", scope="main")
+        tests = self.index.map(detail="files", scope="test")
+
+        self.assertIn("left out", main)
+        self.assertLess(len(main.splitlines()), len(everything.splitlines()) + 1)
+        for line in tests.splitlines()[1:]:
+            self.assertNotIn("Pedido.java", line)
+
     def test_the_symbol_map_does_not_list_markup_fragments(self) -> None:
         self.write("docs/guia.html", "<h1>Guía</h1>\n<p>Texto</p>\n" * 40)
         self.write("docs/notas.md", "# Notas\n\nUna nota.\n" * 20)
